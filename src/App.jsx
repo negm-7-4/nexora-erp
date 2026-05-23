@@ -757,8 +757,10 @@ const FULL_PERMS = {
 /* ═══════════════════════════════════════════════════════
    UTILITIES
 ═══════════════════════════════════════════════════════ */
-// Initialized from localStorage so fmt() is correct even before LanguageProvider mounts
-window.__nexoraLang = localStorage.getItem('nexora_lang') || 'en';
+// Initialized from localStorage so fmt() is correct even before LanguageProvider mounts.
+// Reads the same key the LanguageProvider uses ("atlas_lang") so dates/numbers
+// follow the selected language (English → Latin numerals).
+window.__nexoraLang = localStorage.getItem('atlas_lang') || 'en';
 const _l = () => window.__nexoraLang === 'ar' ? 'ar-EG' : 'en-US';
 export const fmt = n => Number(n || 0).toLocaleString('en-US', { maximumFractionDigits: 0 });
 export const fmtD = d => d ? new Date(d + 'T00:00:00').toLocaleDateString(_l()) : "—";
@@ -800,6 +802,20 @@ const compressImage = (file, maxWidth = 800, quality = 0.8) => {
 // Guard to stop Firebase from turning arrays into objects
 const ensureArray = (arr) => Array.isArray(arr) ? arr : (arr ? Object.values(arr) : []);
 
+// English-first label normalization: map legacy Arabic currency symbols to ISO
+// codes and reset any module label still holding Arabic text to its English
+// default. Custom English labels are preserved. Applied on every data load.
+const _hasArabic = (s) => typeof s === 'string' && /[؀-ۿ]/.test(s);
+function englishifyLabels(savedLabels) {
+  const al = { ...EMPTY_DATA.appLabels, ...(savedLabels || {}) };
+  const CURR_MAP = { 'ج.م': 'EGP', 'ج': 'EGP', 'جنيه': 'EGP', 'ريال': 'SAR', 'درهم': 'AED', 'دولار': 'USD', 'يورو': 'EUR' };
+  if (CURR_MAP[al.currency]) al.currency = CURR_MAP[al.currency];
+  Object.keys(EMPTY_DATA.appLabels).forEach((k) => {
+    if (k !== 'currency' && _hasArabic(al[k])) al[k] = EMPTY_DATA.appLabels[k];
+  });
+  return al;
+}
+
 function mergeWithDefaults(saved) {
   if (!saved) return { ...EMPTY_DATA };
   
@@ -840,18 +856,7 @@ function mergeWithDefaults(saved) {
     crmLeads: ensureArray(saved.crmLeads),
     systemUsers: ensureArray(saved.systemUsers),
     bannedEmails: ensureArray(saved.bannedEmails),
-    appLabels: (() => {
-      const al = { ...EMPTY_DATA.appLabels, ...(saved.appLabels || {}) };
-      const CURR_MAP = { 'ج.م': 'EGP', 'ج': 'EGP', 'جنيه': 'EGP', 'ريال': 'SAR', 'درهم': 'AED', 'دولار': 'USD', 'يورو': 'EUR' };
-      if (CURR_MAP[al.currency]) al.currency = CURR_MAP[al.currency];
-      // English-first: migrate any label still holding Arabic text back to its
-      // English default (custom English labels are preserved untouched).
-      const hasArabic = (s) => typeof s === 'string' && /[؀-ۿ]/.test(s);
-      Object.keys(EMPTY_DATA.appLabels).forEach((k) => {
-        if (k !== 'currency' && hasArabic(al[k])) al[k] = EMPTY_DATA.appLabels[k];
-      });
-      return al;
-    })(),
+    appLabels: englishifyLabels(saved.appLabels),
     companyInfo: (() => {
       const ci = { ...EMPTY_DATA.companyInfo, ...(saved.companyInfo || {}) };
       const OLD_NAMES = ['Nile Company', 'Nile', 'Nile', 'Nile System', 'Nile Co', 'Nile Company'];
@@ -868,7 +873,9 @@ function mergeWithDefaults(saved) {
 function appReducer(state, action) {
   switch (action.type) {
     case 'REPLACE':
-      return action.noMerge ? { ...EMPTY_DATA, ...action.payload } : mergeWithDefaults(action.payload);
+      return action.noMerge
+        ? { ...EMPTY_DATA, ...action.payload, appLabels: englishifyLabels(action.payload?.appLabels) }
+        : mergeWithDefaults(action.payload);
     case 'UPDATE': {
       const nextState = typeof action.updater === 'function' ? action.updater(state) : action.updater;
       const overrideMod = nextState._forceLastModified;

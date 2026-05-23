@@ -241,6 +241,8 @@ export function LanguageProvider({ children }) {
     document.documentElement.dir = dir;
     document.documentElement.lang = lang;
     document.body.classList.toggle("light-mode", theme === "light");
+    // Keep the global locale flag in sync so dates/numbers follow the language.
+    if (typeof window !== "undefined") window.__nexoraLang = lang;
   }, [dir, lang, theme]);
 
   // Re-render consumers when new online translations arrive.
