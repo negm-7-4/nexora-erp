@@ -1,0 +1,67 @@
+/* UX ENHANCEMENTS: supplemental polished shell styles */
+:root {
+  --ux-bg: rgba(8, 12, 26, 0.96);
+  --ux-surface: rgba(15, 23, 42, 0.88);
+  --ux-border: rgba(255, 255, 255, 0.08);
+  --ux-glow: rgba(59, 130, 246, 0.18);
+  --ux-shadow: 0 24px 70px rgba(0, 0, 0, 0.24);
+}
+
+body {
+  background: radial-gradient(circle at 20% 15%, rgba(37, 99, 235, 0.14), transparent 25%),
+              radial-gradient(circle at 85% 10%, rgba(168, 85, 247, 0.12), transparent 22%),
+              linear-gradient(180deg, rgba(9, 14, 28, 1), rgba(5, 9, 19, 1));
+  color: #e2e8f0;
+}
+
+.wrap {
+  background: rgba(9, 16, 30, 0.82);
+  border: 1px solid var(--ux-border);
+  border-radius: 30px;
+  box-shadow: var(--ux-shadow);
+  overflow: hidden;
+}
+
+.sidebar {
+  background: rgba(10, 17, 34, 0.96);
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.main {
+  background: rgba(7, 11, 22, 0.85);
+  border-top-right-radius: 30px;
+  border-bottom-right-radius: 30px;
+}
+
+.topbar {
+  background: rgba(11, 18, 35, 0.8);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.card {
+  background: rgba(11, 20, 40, 0.88) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+.card:hover {
+  transform: translateY(-3px) scale(1.002) !important;
+  box-shadow: 0 28px 82px rgba(0, 0, 0, 0.28) !important;
+}
+
+.btn {
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.18);
+}
+
+.btn:hover {
+  transform: translateY(-1px) !important;
+}
+
+.toast {
+  box-shadow: 0 24px 76px rgba(0, 0, 0, 0.34);
+}
+
+@media (max-width: 900px) {
+  .wrap {
+    border-radius: 24px;
+  }
+}

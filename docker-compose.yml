@@ -1,0 +1,32 @@
+version: "3.9"
+
+# Local full-stack: MongoDB + the Nile API backend.
+# The frontend is a Vite app — run it with `npm run dev` and point
+# VITE_API_URL at http://localhost:4000/api.
+services:
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+  api:
+    build: ./server
+    restart: unless-stopped
+    depends_on:
+      - mongo
+    ports:
+      - "4000:4000"
+    environment:
+      MONGODB_URI: mongodb://mongo:27017/nile
+      JWT_SECRET: ${JWT_SECRET:-change-me-to-a-long-random-secret}
+      PORT: "4000"
+      CORS_ORIGIN: ${CORS_ORIGIN:-*}
+      SUPER_ADMIN_EMAIL: ${SUPER_ADMIN_EMAIL:-}
+      VODAFONE_CASH_NUMBER: ${VODAFONE_CASH_NUMBER:-}
+      INSTAPAY_HANDLE: ${INSTAPAY_HANDLE:-}
+
+volumes:
+  mongo_data:

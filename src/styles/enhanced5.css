@@ -1,0 +1,83 @@
+/* ════════════════════════════════════════════════════════════════════════
+   NEXORA — CROSS-PAGE IMPROVEMENTS · LAYER 5
+   Subtle, carefully-scoped refinements that improve readability & usability
+   across EVERY existing page (tables, forms, empty states, density mode).
+   Kept gentle so it never disrupts layout.
+   ════════════════════════════════════════════════════════════════════════ */
+
+/* ── Zebra striping for readability (very subtle) ── */
+tbody tr:nth-child(even) > td { background: rgba(96, 160, 220, .035); }
+body.light-mode tbody tr:nth-child(even) > td { background: rgba(15, 23, 42, .025); }
+/* keep hover precedence */
+tbody tr:hover > td { background: linear-gradient(90deg, rgba(59,130,246,.09), rgba(59,130,246,.03)) !important; }
+
+/* ── Compact density mode (toggled from Power Tools) ── */
+body.nx-density-compact td,
+body.nx-density-compact th { padding-top: 6px !important; padding-bottom: 6px !important; font-size: 11.5px; }
+body.nx-density-compact .card { margin-bottom: 12px; }
+body.nx-density-compact .card-hdr { padding-top: 10px; padding-bottom: 10px; }
+body.nx-density-compact .stat-card { padding: 12px; }
+body.nx-density-compact .page { padding: 16px; }
+body.nx-density-compact .stats-grid { gap: 10px; margin-bottom: 16px; }
+
+/* ── Empty states: friendlier, centered ── */
+.empty { padding: 40px 20px; }
+.empty-icon { font-size: 46px; }
+.empty-txt { font-size: 13px; max-width: 280px; margin: 0 auto; line-height: 1.5; }
+
+/* ── Numbers: align money/quantity right for scannability ── */
+td .pill, td .badge { font-variant-numeric: tabular-nums; }
+
+/* ── Forms: clearer required + spacing ── */
+.fl { margin-bottom: 1px; }
+.form-grid { row-gap: 14px; }
+.field-err { display: inline-flex; align-items: center; gap: 4px; }
+
+/* ── Card body breathing room when present ── */
+.card > .table-scroll { padding-bottom: 2px; }
+
+/* ── Sticky action bars on long modals ── */
+.modal-footer { position: sticky; bottom: 0; background: linear-gradient(0deg, var(--dark), rgba(13,27,52,.9)); }
+
+/* ── Better disabled affordance ── */
+.btn:disabled, .fi:disabled { cursor: not-allowed; }
+.fi:disabled { opacity: .65; }
+
+/* ── Smooth anchor for in-page nav ── */
+html { scroll-padding-top: 80px; }
+
+/* ── Slightly larger touch targets on mobile ── */
+@media (max-width: 768px) {
+  .btn { min-height: 38px; }
+  .nav-item { padding-top: 11px; padding-bottom: 11px; }
+  td, th { font-size: 12px; }
+}
+
+/* ── Print: tighten ── */
+@media print {
+  tbody tr:nth-child(even) > td { background: #f7f9fc !important; }
+}
+
+/* ── Finance & Reports Center: clean print / PDF output ── */
+@media print {
+  body.nx-printing-finance > #root,
+  body.nx-printing-finance > #powertools-root { display: none !important; }
+  body.nx-printing-finance .nx-finance-overlay {
+    position: static !important; inset: auto !important; background: #fff !important;
+    backdrop-filter: none !important; padding: 0 !important; display: block !important;
+  }
+  body.nx-printing-finance .nx-finance-panel {
+    width: 100% !important; max-width: 100% !important; max-height: none !important;
+    box-shadow: none !important; border: none !important; border-radius: 0 !important;
+    background: #fff !important; color: #000 !important;
+  }
+  body.nx-printing-finance .no-print { display: none !important; }
+  body.nx-printing-finance .finance-print-head { display: block !important; margin-bottom: 16px; }
+  body.nx-printing-finance #nx-finance-print,
+  body.nx-printing-finance #nx-finance-print * { color: #000 !important; }
+  body.nx-printing-finance #nx-finance-print table th { color: #444 !important; border-color: #ccc !important; }
+  body.nx-printing-finance #nx-finance-print td,
+  body.nx-printing-finance #nx-finance-print .finance-row { border-color: #ddd !important; }
+}
+
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }

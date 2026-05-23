@@ -1,0 +1,362 @@
+/* ════════════════════════════════════════════════════════════════════════
+   NEXORA — ENHANCED DESIGN SYSTEM
+   A comprehensive visual layer on top of the app's base styles.
+   Loaded globally; targets existing class names so it upgrades every screen
+   without markup changes. Organized by section. Respects reduced-motion.
+   ════════════════════════════════════════════════════════════════════════ */
+
+/* ────────────────────────────────────────────────────────────
+   1. DESIGN TOKENS
+   ──────────────────────────────────────────────────────────── */
+:root {
+  --nx-radius-sm: 8px;
+  --nx-radius: 14px;
+  --nx-radius-lg: 20px;
+  --nx-radius-xl: 26px;
+  --nx-gap: 14px;
+
+  --nx-shadow-1: 0 1px 2px rgba(0,0,0,.18), 0 4px 14px rgba(0,0,0,.16);
+  --nx-shadow-2: 0 2px 4px rgba(0,0,0,.2), 0 10px 30px rgba(0,0,0,.22);
+  --nx-shadow-3: 0 6px 12px rgba(0,0,0,.24), 0 20px 50px rgba(0,0,0,.32);
+  --nx-shadow-glow: 0 0 0 1px rgba(96,165,250,.18), 0 0 24px rgba(37,99,235,.18);
+
+  --nx-ease: cubic-bezier(.22, 1, .36, 1);
+  --nx-ease-in-out: cubic-bezier(.4, 0, .2, 1);
+  --nx-fast: .18s;
+  --nx-mid: .28s;
+  --nx-slow: .5s;
+
+  --nx-grad-primary: linear-gradient(135deg, #2563eb, #1e4d9e);
+  --nx-grad-success: linear-gradient(135deg, #10b981, #059669);
+  --nx-grad-gold: linear-gradient(135deg, #f59e0b, #f97316);
+  --nx-grad-danger: linear-gradient(135deg, #f43f5e, #e11d48);
+  --nx-grad-violet: linear-gradient(135deg, #7c3aed, #2563eb);
+  --nx-grad-cyan: linear-gradient(135deg, #06b6d4, #10b981);
+  --nx-grad-sheen: linear-gradient(120deg, transparent, rgba(255,255,255,.25), transparent);
+}
+
+/* ────────────────────────────────────────────────────────────
+   2. GLOBAL BASE / TYPOGRAPHY
+   ──────────────────────────────────────────────────────────── */
+* { -webkit-tap-highlight-color: transparent; }
+html { scroll-behavior: smooth; }
+body { text-rendering: optimizeLegibility; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+::selection { background: rgba(37,99,235,.35); color: #fff; }
+
+.card-title, .login-title, .sb-title, .topbar-title { letter-spacing: -.2px; }
+.sc-value { letter-spacing: -.4px; font-variant-numeric: tabular-nums; }
+.num, td, .sc-value, .inv-val { font-variant-numeric: tabular-nums; }
+small, .txs { letter-spacing: .1px; }
+
+/* Crisp focus ring for keyboard users */
+:focus-visible { outline: 2px solid rgba(96,165,250,.7); outline-offset: 2px; border-radius: 4px; }
+
+/* ────────────────────────────────────────────────────────────
+   3. SCROLLBARS
+   ──────────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, var(--mid), var(--bright));
+  border-radius: 10px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover { background: linear-gradient(180deg, var(--bright), var(--sky)); background-clip: padding-box; border: 2px solid transparent; }
+* { scrollbar-width: thin; scrollbar-color: var(--mid) transparent; }
+
+/* ────────────────────────────────────────────────────────────
+   4. KEYFRAMES (motion library)
+   ──────────────────────────────────────────────────────────── */
+@keyframes nx-fade-up   { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes nx-fade-in   { from { opacity: 0; } to { opacity: 1; } }
+@keyframes nx-pop       { 0% { opacity: 0; transform: scale(.9); } 60% { transform: scale(1.03); } 100% { opacity: 1; transform: scale(1); } }
+@keyframes nx-pop-soft  { from { opacity: 0; transform: scale(.96); } to { opacity: 1; transform: scale(1); } }
+@keyframes nx-slide-r   { from { opacity: 0; transform: translateX(-22px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes nx-slide-l   { from { opacity: 0; transform: translateX(22px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes nx-sheen     { 0% { left: -60%; } 60%, 100% { left: 140%; } }
+@keyframes nx-glow      { 0%, 100% { box-shadow: 0 0 10px rgba(59,130,246,.25); } 50% { box-shadow: 0 0 26px rgba(59,130,246,.55); } }
+@keyframes nx-float     { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+@keyframes nx-row-in    { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes nx-spin      { to { transform: rotate(360deg); } }
+@keyframes nx-shimmer   { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+@keyframes nx-pulse     { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .55; transform: scale(.92); } }
+@keyframes nx-bob       { 0%, 100% { transform: translateY(0) rotate(0); } 50% { transform: translateY(-3px) rotate(-2deg); } }
+@keyframes nx-ring      { 0% { box-shadow: 0 0 0 0 rgba(37,99,235,.45); } 100% { box-shadow: 0 0 0 14px rgba(37,99,235,0); } }
+@keyframes nx-grad-move { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+
+/* ────────────────────────────────────────────────────────────
+   5. PAGE & LAYOUT ENTRANCES
+   ──────────────────────────────────────────────────────────── */
+.page { animation: nx-fade-up .42s var(--nx-ease) both; }
+.card { animation: nx-fade-up .46s var(--nx-ease) both; }
+.dgrid > .card:nth-child(2) { animation-delay: .06s; }
+.stats-grid > * { animation: nx-pop .5s var(--nx-ease) both; }
+.stats-grid > *:nth-child(1) { animation-delay: .02s; }
+.stats-grid > *:nth-child(2) { animation-delay: .07s; }
+.stats-grid > *:nth-child(3) { animation-delay: .12s; }
+.stats-grid > *:nth-child(4) { animation-delay: .17s; }
+.stats-grid > *:nth-child(5) { animation-delay: .22s; }
+.stats-grid > *:nth-child(6) { animation-delay: .27s; }
+
+/* ────────────────────────────────────────────────────────────
+   6. CARDS
+   ──────────────────────────────────────────────────────────── */
+.card {
+  border-radius: var(--nx-radius) !important;
+  border: 1px solid rgba(120,160,220,.14) !important;
+  box-shadow: var(--nx-shadow-2) !important;
+  position: relative;
+  transition: transform var(--nx-mid) var(--nx-ease), box-shadow var(--nx-mid) var(--nx-ease), border-color var(--nx-mid) var(--nx-ease) !important;
+}
+.card:hover { box-shadow: var(--nx-shadow-3) !important; border-color: rgba(96,165,250,.28) !important; }
+.card-hdr {
+  background: linear-gradient(180deg, rgba(255,255,255,.04), transparent) !important;
+  backdrop-filter: blur(4px);
+}
+.card-hdr::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(96,165,250,.4), transparent);
+}
+.card-title { display: flex; align-items: center; gap: 8px; }
+
+/* ────────────────────────────────────────────────────────────
+   7. STAT CARDS
+   ──────────────────────────────────────────────────────────── */
+.stat-card {
+  border-radius: var(--nx-radius) !important;
+  box-shadow: var(--nx-shadow-1) !important;
+  overflow: hidden;
+  transition: transform var(--nx-mid) var(--nx-ease), box-shadow var(--nx-mid) var(--nx-ease), border-color var(--nx-mid) var(--nx-ease) !important;
+}
+.stat-card::after {
+  content: ""; position: absolute; top: 0; left: -60%; width: 38%; height: 100%;
+  background: var(--nx-grad-sheen); transform: skewX(-20deg); pointer-events: none;
+}
+.stat-card:hover { transform: translateY(-5px) scale(1.02) !important; box-shadow: var(--nx-shadow-3) !important; }
+.stat-card:hover::after { animation: nx-sheen .85s var(--nx-ease); }
+.stat-card:hover .sc-icon { animation: nx-float 2s ease-in-out infinite; }
+.sc-icon { transition: transform var(--nx-mid) var(--nx-ease); border-radius: 11px; }
+
+/* ────────────────────────────────────────────────────────────
+   8. BUTTONS
+   ──────────────────────────────────────────────────────────── */
+.btn {
+  position: relative; overflow: hidden;
+  border-radius: var(--nx-radius-sm);
+  font-weight: 600; letter-spacing: .1px;
+  transition: transform var(--nx-fast) var(--nx-ease), box-shadow var(--nx-fast) var(--nx-ease), filter var(--nx-fast) var(--nx-ease) !important;
+}
+.btn::after {
+  content: ""; position: absolute; top: 0; left: -60%; width: 40%; height: 100%;
+  background: var(--nx-grad-sheen); transform: skewX(-20deg); pointer-events: none;
+}
+.btn-p::after, .btn-s::after, .btn-gold::after, .btn-vio::after, .btn-d::after { content: ""; }
+.btn:hover { transform: translateY(-2px); filter: brightness(1.06); }
+.btn:hover::after { animation: nx-sheen .8s var(--nx-ease); }
+.btn:active { transform: scale(.96) !important; }
+.btn:disabled { filter: grayscale(.3) opacity(.6); }
+.btn-p   { background: var(--nx-grad-primary) !important; box-shadow: 0 4px 14px rgba(37,99,235,.3), inset 0 1px 0 rgba(255,255,255,.14) !important; }
+.btn-s   { background: var(--nx-grad-success) !important; box-shadow: 0 4px 14px rgba(16,185,129,.3), inset 0 1px 0 rgba(255,255,255,.14) !important; }
+.btn-gold{ background: var(--nx-grad-gold) !important; box-shadow: 0 4px 14px rgba(245,158,11,.3), inset 0 1px 0 rgba(255,255,255,.2) !important; }
+.btn-d   { background: var(--nx-grad-danger) !important; box-shadow: 0 4px 14px rgba(244,63,94,.3), inset 0 1px 0 rgba(255,255,255,.14) !important; }
+.btn-vio { background: var(--nx-grad-violet) !important; box-shadow: 0 4px 14px rgba(124,58,237,.3), inset 0 1px 0 rgba(255,255,255,.14) !important; }
+.btn-g   { backdrop-filter: blur(6px); }
+.btn-icon { display: inline-flex; align-items: center; justify-content: center; }
+
+/* ────────────────────────────────────────────────────────────
+   9. FORMS / INPUTS
+   ──────────────────────────────────────────────────────────── */
+.fi, .login-input, .gs-input {
+  border-radius: 10px !important;
+  transition: border-color var(--nx-fast), box-shadow var(--nx-fast), background var(--nx-fast) !important;
+}
+.fi:hover { border-color: rgba(96,165,250,.4) !important; }
+.fi:focus, .login-input:focus, .gs-input:focus {
+  border-color: var(--bright) !important;
+  box-shadow: 0 0 0 3px rgba(59,130,246,.2) !important;
+  background: rgba(8,15,30,.92) !important;
+}
+.fi.fi-err { border-color: rgba(244,63,94,.65) !important; box-shadow: 0 0 0 3px rgba(244,63,94,.12) !important; }
+.fl { text-transform: uppercase; font-size: 10px; letter-spacing: .6px; opacity: .9; }
+select.fi { background-image: linear-gradient(45deg, transparent 50%, var(--tm) 50%), linear-gradient(135deg, var(--tm) 50%, transparent 50%); background-position: calc(100% - 16px) 50%, calc(100% - 11px) 50%; background-size: 5px 5px; background-repeat: no-repeat; }
+.field-err { animation: nx-slide-r .25s var(--nx-ease) both; }
+
+/* ────────────────────────────────────────────────────────────
+   10. TABLES
+   ──────────────────────────────────────────────────────────── */
+.table-scroll { border-radius: 10px; }
+thead th { position: sticky; top: 0; z-index: 2; backdrop-filter: blur(8px); background: rgba(16,36,62,.6); }
+td, th { padding-top: 11px !important; padding-bottom: 11px !important; }
+tbody tr { animation: nx-row-in .34s var(--nx-ease) both; transition: background var(--nx-fast), transform var(--nx-fast); }
+tbody tr:nth-child(1){animation-delay:.02s}tbody tr:nth-child(2){animation-delay:.05s}
+tbody tr:nth-child(3){animation-delay:.08s}tbody tr:nth-child(4){animation-delay:.11s}
+tbody tr:nth-child(5){animation-delay:.14s}tbody tr:nth-child(6){animation-delay:.17s}
+tbody tr:nth-child(7){animation-delay:.20s}tbody tr:nth-child(8){animation-delay:.23s}
+tbody tr:hover { background: linear-gradient(90deg, rgba(59,130,246,.08), rgba(59,130,246,.02)) !important; }
+tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--bright); }
+
+/* ────────────────────────────────────────────────────────────
+   11. BADGES & PILLS
+   ──────────────────────────────────────────────────────────── */
+.badge, .pill { backdrop-filter: blur(4px); transition: transform var(--nx-fast); font-weight: 700; }
+.badge:hover, .pill:hover { transform: translateY(-1px); }
+.b-ok, .p-em { box-shadow: inset 0 0 0 1px rgba(16,185,129,.25); }
+.b-err, .p-rose { box-shadow: inset 0 0 0 1px rgba(244,63,94,.25); }
+.b-warn, .p-gold { box-shadow: inset 0 0 0 1px rgba(245,158,11,.25); }
+.b-info, .p-blue { box-shadow: inset 0 0 0 1px rgba(59,130,246,.25); }
+.b-vio, .p-vio { box-shadow: inset 0 0 0 1px rgba(124,58,237,.25); }
+
+/* ────────────────────────────────────────────────────────────
+   12. TABS
+   ──────────────────────────────────────────────────────────── */
+.tabs { backdrop-filter: blur(6px); border: 1px solid rgba(96,160,220,.12); }
+.tab-btn { transition: all var(--nx-fast) var(--nx-ease); border-radius: 8px; }
+.tab-btn.active { box-shadow: 0 4px 12px rgba(37,99,235,.35), inset 0 1px 0 rgba(255,255,255,.15); }
+.tab-btn:not(.active):hover { transform: translateY(-1px); }
+
+/* ────────────────────────────────────────────────────────────
+   13. MODALS
+   ──────────────────────────────────────────────────────────── */
+.modal-ov { backdrop-filter: blur(10px) saturate(1.1); animation: nx-fade-in .2s ease; }
+.modal {
+  border-radius: var(--nx-radius-lg) !important;
+  box-shadow: 0 30px 90px rgba(0,0,0,.7), inset 0 1px 0 rgba(255,255,255,.08) !important;
+  animation: nx-pop .3s var(--nx-ease) both !important;
+}
+.modal-hdr { background: linear-gradient(180deg, rgba(255,255,255,.04), transparent); }
+.modal-hdr::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 1px; background: linear-gradient(90deg, transparent, rgba(96,165,250,.4), transparent); }
+
+/* ────────────────────────────────────────────────────────────
+   14. SIDEBAR / NAV
+   ──────────────────────────────────────────────────────────── */
+.sidebar { box-shadow: 4px 0 40px rgba(0,0,0,.4); }
+.sb-title { background-size: 200% auto; animation: nx-grad-move 6s ease infinite; }
+.nav-item { transition: transform var(--nx-fast) var(--nx-ease), background var(--nx-fast), color var(--nx-fast), padding var(--nx-fast); border-radius: 10px; }
+.nav-item:hover { transform: translateX(3px); }
+.nav-item .nav-icon { transition: transform var(--nx-fast) var(--nx-ease); }
+.nav-item:hover .nav-icon { transform: scale(1.12); }
+.nav-item.active {
+  box-shadow: inset 0 0 0 1px rgba(96,165,250,.25), 0 0 18px rgba(37,99,235,.14) !important;
+}
+.nav-item.active .nav-icon { animation: nx-bob 3s ease-in-out infinite; }
+.nav-badge { animation: nx-pulse 1.6s infinite; }
+.user-av { box-shadow: 0 0 0 2px rgba(96,165,250,.25), 0 4px 12px rgba(0,0,0,.3); }
+
+/* ────────────────────────────────────────────────────────────
+   15. TOPBAR
+   ──────────────────────────────────────────────────────────── */
+.topbar { box-shadow: 0 4px 24px rgba(0,0,0,.18); }
+.tb-btn { transition: transform var(--nx-fast), background var(--nx-fast), color var(--nx-fast), box-shadow var(--nx-fast); }
+.tb-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,.22); }
+.notif-dot { animation: nx-pulse 1.6s infinite; }
+.notif-panel { animation: nx-pop-soft .22s var(--nx-ease) both; box-shadow: 0 24px 60px rgba(0,0,0,.6); }
+
+/* ────────────────────────────────────────────────────────────
+   16. TOASTS
+   ──────────────────────────────────────────────────────────── */
+.toast { border-radius: 12px; box-shadow: 0 10px 36px rgba(0,0,0,.5); animation: nx-slide-l .3s var(--nx-ease) both; }
+.toast::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; border-radius: 3px 0 0 3px; }
+.toast-success::before { background: var(--em); }
+.toast-error::before { background: var(--rose); }
+.toast-warning::before { background: var(--gold); }
+.toast-info::before { background: var(--bright); }
+
+/* ────────────────────────────────────────────────────────────
+   17. EMPTY STATES & SPINNER
+   ──────────────────────────────────────────────────────────── */
+.empty { animation: nx-fade-in .4s ease both; }
+.empty-icon { filter: drop-shadow(0 6px 16px rgba(59,130,246,.28)); animation: nx-float 4s ease-in-out infinite; }
+.spinner { box-shadow: 0 0 24px rgba(37,99,235,.3); }
+
+/* Skeleton shimmer utility */
+.nx-skeleton {
+  background: linear-gradient(90deg, var(--dark) 25%, rgba(96,165,250,.12) 50%, var(--dark) 75%);
+  background-size: 200% 100%; animation: nx-shimmer 1.4s infinite; border-radius: 8px;
+}
+
+/* ────────────────────────────────────────────────────────────
+   18. CHARTS
+   ──────────────────────────────────────────────────────────── */
+.recharts-wrapper { font-variant-numeric: tabular-nums; }
+.recharts-default-tooltip { border-radius: 10px !important; box-shadow: 0 10px 30px rgba(0,0,0,.5) !important; }
+.recharts-cartesian-grid line { stroke: rgba(96,160,220,.08); }
+.recharts-surface { overflow: visible; }
+.dgrid { gap: 16px; }
+
+/* ────────────────────────────────────────────────────────────
+   19. FLOATING / FAB / COPILOT
+   ──────────────────────────────────────────────────────────── */
+.fab, .copilot-fab, .ai-fab { animation: nx-glow 2.6s infinite, nx-float 4s ease-in-out infinite; }
+.fab:hover, .copilot-fab:hover, .ai-fab:hover { animation: none; transform: scale(1.1) rotate(8deg); }
+.ai-panel { box-shadow: 0 24px 60px rgba(0,0,0,.6), 0 0 50px rgba(124,58,237,.25) !important; }
+.ai-msg { animation: nx-pop-soft .25s var(--nx-ease) both; }
+.ai-mic.listening { animation: nx-ring 1.2s infinite, nx-glow 1.4s infinite; }
+
+/* ────────────────────────────────────────────────────────────
+   20. LOGIN SCREEN
+   ──────────────────────────────────────────────────────────── */
+.login-card { animation: nx-pop .6s var(--nx-ease) both; box-shadow: 0 40px 90px rgba(0,0,0,.7), 0 0 70px rgba(37,99,235,.14) !important; }
+.login-ico { animation: nx-float 4s ease-in-out infinite, nx-glow 3s infinite; }
+.login-title { background-size: 200% auto; animation: nx-grad-move 6s ease infinite; }
+.login-btn { transition: transform var(--nx-fast), box-shadow var(--nx-fast), filter var(--nx-fast); }
+.login-btn:hover { transform: translateY(-2px); filter: brightness(1.08); }
+.login-input:focus { box-shadow: 0 0 0 3px rgba(59,130,246,.2) !important; }
+
+/* ────────────────────────────────────────────────────────────
+   21. INVOICE PAPER (print + preview polish)
+   ──────────────────────────────────────────────────────────── */
+.inv-paper { box-shadow: 0 20px 60px rgba(0,0,0,.35); border-radius: 6px; }
+.inv-title { letter-spacing: -.5px; }
+.inv-table thead th { background: #f1f4f9; }
+.inv-table tbody tr:nth-child(even) td { background: #fafbfd; }
+.inv-total { letter-spacing: -.3px; }
+
+/* ────────────────────────────────────────────────────────────
+   22. MOBILE / BOTTOM-NAV
+   ──────────────────────────────────────────────────────────── */
+.bottom-nav { box-shadow: 0 -6px 24px rgba(0,0,0,.3); }
+.bn-item { transition: color var(--nx-fast); }
+.bn-item .bn-ic, .bn-item .bn-icon { transition: transform var(--nx-fast) var(--nx-ease); }
+.bn-item.active .bn-ic, .bn-item.active .bn-icon { transform: translateY(-3px) scale(1.12); }
+@media (max-width: 768px) {
+  .stat-card { border-radius: 12px !important; }
+  .card { border-radius: 12px !important; }
+  .modal { border-radius: 18px 18px 0 0 !important; }
+}
+
+/* ────────────────────────────────────────────────────────────
+   23. LIGHT MODE REFINEMENTS
+   ──────────────────────────────────────────────────────────── */
+body.light-mode .card { box-shadow: 0 1px 2px rgba(15,23,42,.06), 0 10px 30px rgba(15,23,42,.08) !important; border-color: rgba(15,23,42,.08) !important; }
+body.light-mode .stat-card { box-shadow: 0 1px 2px rgba(15,23,42,.05), 0 8px 22px rgba(15,23,42,.07) !important; }
+body.light-mode .topbar { background: rgba(255,255,255,.85) !important; box-shadow: 0 4px 18px rgba(15,23,42,.06); }
+body.light-mode .sidebar { box-shadow: 4px 0 30px rgba(15,23,42,.06); }
+body.light-mode thead th { background: rgba(241,245,249,.85); }
+body.light-mode .toast { box-shadow: 0 10px 30px rgba(15,23,42,.15); }
+body.light-mode ::selection { background: rgba(37,99,235,.18); color: #0f172a; }
+
+/* ────────────────────────────────────────────────────────────
+   24. DECORATIVE / UTILITY HELPERS
+   ──────────────────────────────────────────────────────────── */
+.nx-glow-text { text-shadow: 0 0 16px rgba(96,165,250,.5); }
+.nx-gradient-text { background: var(--nx-grad-violet); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+.nx-divider { height: 1px; background: linear-gradient(90deg, transparent, var(--border-b), transparent); margin: 14px 0; }
+.alert-bar { animation: nx-slide-r .4s var(--nx-ease) both; border-radius: 10px; }
+.divider { background: linear-gradient(90deg, transparent, var(--border-b), transparent); }
+
+/* Subtle ambient gradient motion on the app shell background */
+.wrap::before {
+  content: ""; position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background:
+    radial-gradient(40% 30% at 15% 10%, rgba(37,99,235,.10), transparent 60%),
+    radial-gradient(35% 30% at 85% 90%, rgba(124,58,237,.08), transparent 60%);
+  animation: nx-grad-move 18s ease infinite; background-size: 200% 200%;
+}
+
+/* ────────────────────────────────────────────────────────────
+   25. ACCESSIBILITY — reduced motion
+   ──────────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+}

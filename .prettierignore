@@ -1,0 +1,10 @@
+node_modules/
+dist/
+android/
+android/app/build/
+android/capacitor.build.gradle
+android/gradle.properties
+android/local.properties
+android/variables.gradle
+public/
+**/*.lock

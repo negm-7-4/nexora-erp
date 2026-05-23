@@ -1,0 +1,212 @@
+/* ════════════════════════════════════════════════════════════════════════
+   NEXORA — ENHANCED DESIGN SYSTEM · LAYER 3
+   New, non-duplicate polish: accent themes, decorative backgrounds, tooltips,
+   chips, avatars, timeline/stepper, scroll reveals, responsive type, more.
+   ════════════════════════════════════════════════════════════════════════ */
+
+/* ────────────────────────────────────────────────────────────
+   58. SELECTABLE ACCENT THEMES
+   Add a class to <body> (e.g. body.accent-violet) to retint the app.
+   ──────────────────────────────────────────────────────────── */
+body.accent-violet { --bright: #7c3aed; --mid: #6d28d9; --sky: #8b5cf6; --light: #a78bfa; }
+body.accent-emerald { --bright: #10b981; --mid: #059669; --sky: #34d399; --light: #6ee7b7; }
+body.accent-rose { --bright: #f43f5e; --mid: #e11d48; --sky: #fb7185; --light: #fda4af; }
+body.accent-amber { --bright: #f59e0b; --mid: #d97706; --sky: #fbbf24; --light: #fcd34d; }
+body.accent-cyan { --bright: #06b6d4; --mid: #0891b2; --sky: #22d3ee; --light: #67e8f9; }
+body.accent-indigo { --bright: #4f46e5; --mid: #4338ca; --sky: #6366f1; --light: #818cf8; }
+
+/* ────────────────────────────────────────────────────────────
+   59. DECORATIVE BACKGROUNDS (utility classes)
+   ──────────────────────────────────────────────────────────── */
+.nx-bg-grid { background-image: linear-gradient(rgba(96,165,250,.06) 1px, transparent 1px), linear-gradient(90deg, rgba(96,165,250,.06) 1px, transparent 1px); background-size: 32px 32px; }
+.nx-bg-dots { background-image: radial-gradient(rgba(96,165,250,.12) 1px, transparent 1px); background-size: 18px 18px; }
+.nx-bg-aurora { position: relative; overflow: hidden; }
+.nx-bg-aurora::before {
+  content: ""; position: absolute; inset: -40%;
+  background: conic-gradient(from 0deg, rgba(37,99,235,.12), rgba(124,58,237,.12), rgba(6,182,212,.12), rgba(37,99,235,.12));
+  filter: blur(60px); animation: nx-aurora 20s linear infinite; z-index: 0;
+}
+@keyframes nx-aurora { to { transform: rotate(360deg); } }
+
+/* ────────────────────────────────────────────────────────────
+   60. TOOLTIP SYSTEM (data-tip)
+   ──────────────────────────────────────────────────────────── */
+[data-tip] { position: relative; }
+[data-tip]::after {
+  content: attr(data-tip); position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%) translateY(4px);
+  background: rgba(8,15,30,.97); color: var(--tp); font-size: 11px; font-weight: 600; white-space: nowrap;
+  padding: 6px 10px; border-radius: 8px; border: 1px solid var(--border-b); box-shadow: 0 8px 24px rgba(0,0,0,.5);
+  opacity: 0; pointer-events: none; transition: opacity .18s ease, transform .18s ease; z-index: 999;
+}
+[data-tip]:hover::after { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ────────────────────────────────────────────────────────────
+   61. CHIPS / TAGS
+   ──────────────────────────────────────────────────────────── */
+.nx-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; background: var(--glass); border: 1px solid var(--border); color: var(--ts); transition: all var(--nx-fast); }
+.nx-chip:hover { border-color: var(--bright); color: var(--light); transform: translateY(-1px); }
+.nx-chip-close { cursor: pointer; opacity: .6; }
+.nx-chip-close:hover { opacity: 1; }
+
+/* ────────────────────────────────────────────────────────────
+   62. AVATARS
+   ──────────────────────────────────────────────────────────── */
+.user-av, .sb-ws-ico, .detail-av { position: relative; }
+.user-av::after { content: ""; position: absolute; inset: 0; border-radius: inherit; box-shadow: inset 0 1px 1px rgba(255,255,255,.25); pointer-events: none; }
+.nx-avatar-ring { box-shadow: 0 0 0 2px var(--deep), 0 0 0 4px var(--bright); }
+.nx-status-online { position: relative; }
+.nx-status-online::before { content: ""; position: absolute; right: 0; bottom: 0; width: 9px; height: 9px; border-radius: 50%; background: var(--em); border: 2px solid var(--deep); box-shadow: 0 0 6px var(--em); }
+
+/* ────────────────────────────────────────────────────────────
+   63. TIMELINE
+   ──────────────────────────────────────────────────────────── */
+.nx-timeline { position: relative; padding-inline-start: 24px; }
+.nx-timeline::before { content: ""; position: absolute; inset-inline-start: 6px; top: 0; bottom: 0; width: 2px; background: linear-gradient(180deg, var(--bright), transparent); }
+.nx-timeline-item { position: relative; padding-bottom: 18px; animation: nx-fade-up .4s var(--nx-ease) both; }
+.nx-timeline-item::before { content: ""; position: absolute; inset-inline-start: -22px; top: 4px; width: 12px; height: 12px; border-radius: 50%; background: var(--bright); box-shadow: 0 0 0 3px rgba(37,99,235,.2); }
+
+/* ────────────────────────────────────────────────────────────
+   64. STEPPER
+   ──────────────────────────────────────────────────────────── */
+.nx-stepper { display: flex; align-items: center; gap: 6px; }
+.nx-step { display: flex; align-items: center; gap: 8px; }
+.nx-step-dot { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: var(--glass); border: 1px solid var(--border); font-size: 12px; font-weight: 800; transition: all var(--nx-mid); }
+.nx-step.active .nx-step-dot { background: var(--nx-grad-primary); color: #fff; box-shadow: 0 0 16px rgba(37,99,235,.4); }
+.nx-step.done .nx-step-dot { background: var(--nx-grad-success); color: #fff; }
+.nx-step-line { width: 36px; height: 2px; background: var(--border); }
+.nx-step.done + .nx-step .nx-step-line, .nx-step.active .nx-step-line { background: var(--bright); }
+
+/* ────────────────────────────────────────────────────────────
+   65. KANBAN / BOARD COLUMNS
+   ──────────────────────────────────────────────────────────── */
+.nx-board { display: flex; gap: 14px; overflow-x: auto; padding-bottom: 8px; }
+.nx-board-col { flex: 1; min-width: 260px; background: var(--glass); border: 1px solid var(--border); border-radius: 14px; padding: 12px; }
+.nx-board-col-hdr { font-size: 12px; font-weight: 800; color: var(--ts); padding: 4px 6px 10px; text-transform: uppercase; letter-spacing: .5px; }
+.nx-board-card { background: var(--glass-b); border: 1px solid var(--border); border-radius: 10px; padding: 12px; margin-bottom: 10px; cursor: grab; transition: transform var(--nx-fast), box-shadow var(--nx-fast); animation: nx-fade-up .35s var(--nx-ease) both; }
+.nx-board-card:hover { transform: translateY(-2px); box-shadow: var(--nx-shadow-2); }
+.nx-board-card:active { cursor: grabbing; }
+
+/* ────────────────────────────────────────────────────────────
+   66. SCROLL-REVEAL UTILITIES
+   ──────────────────────────────────────────────────────────── */
+@media (min-width: 1px) {
+  .nx-reveal { animation: nx-fade-up .6s var(--nx-ease) both; }
+  .nx-reveal-zoom { animation: nx-zoom-in .5s var(--nx-ease) both; }
+}
+
+/* ────────────────────────────────────────────────────────────
+   67. RESPONSIVE FLUID TYPOGRAPHY
+   ──────────────────────────────────────────────────────────── */
+.sc-value { font-size: clamp(17px, 2.2vw, 22px); }
+.card-title { font-size: clamp(13px, 1.4vw, 15px); }
+.login-title { font-size: clamp(22px, 4vw, 28px); }
+.topbar-title { font-size: clamp(15px, 2vw, 18px); }
+
+/* ────────────────────────────────────────────────────────────
+   68. GRADIENT UTILITY CLASSES
+   ──────────────────────────────────────────────────────────── */
+.nx-grad-primary { background: var(--nx-grad-primary); }
+.nx-grad-gold { background: var(--nx-grad-gold); }
+.nx-grad-success { background: var(--nx-grad-success); }
+.nx-grad-violet { background: var(--nx-grad-violet); }
+.nx-text-grad-blue { background: linear-gradient(135deg, var(--light), var(--cyan-l)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+.nx-text-grad-gold { background: linear-gradient(135deg, var(--gold-l), var(--orange)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+
+/* ────────────────────────────────────────────────────────────
+   69. GLASS PANELS
+   ──────────────────────────────────────────────────────────── */
+.nx-glass { background: rgba(13,27,52,.55); backdrop-filter: blur(16px) saturate(1.2); border: 1px solid rgba(120,160,220,.16); border-radius: 16px; }
+body.light-mode .nx-glass { background: rgba(255,255,255,.6); border-color: rgba(15,23,42,.08); }
+
+/* ────────────────────────────────────────────────────────────
+   70. SEGMENTED CONTROL
+   ──────────────────────────────────────────────────────────── */
+.nx-seg { display: inline-flex; background: var(--glass); border: 1px solid var(--border); border-radius: 10px; padding: 3px; }
+.nx-seg button { border: none; background: transparent; color: var(--ts); padding: 6px 14px; border-radius: 8px; font-weight: 700; font-size: 12px; cursor: pointer; transition: all var(--nx-fast); }
+.nx-seg button.active { background: var(--nx-grad-primary); color: #fff; box-shadow: 0 3px 10px rgba(37,99,235,.3); }
+
+/* ────────────────────────────────────────────────────────────
+   71. KPI / METRIC DELTA INDICATORS
+   ──────────────────────────────────────────────────────────── */
+.nx-delta-up { color: var(--em-l); font-weight: 800; }
+.nx-delta-up::before { content: "▲ "; font-size: 9px; }
+.nx-delta-down { color: var(--rose-l); font-weight: 800; }
+.nx-delta-down::before { content: "▼ "; font-size: 9px; }
+
+/* ────────────────────────────────────────────────────────────
+   72. RATING / STARS
+   ──────────────────────────────────────────────────────────── */
+.nx-stars { display: inline-flex; gap: 2px; color: var(--gold-l); }
+.nx-stars span { filter: drop-shadow(0 0 4px rgba(245,158,11,.5)); }
+
+/* ────────────────────────────────────────────────────────────
+   73. SKELETON VARIANTS
+   ──────────────────────────────────────────────────────────── */
+.nx-skel-line { height: 12px; border-radius: 6px; margin-bottom: 8px; background: linear-gradient(90deg, var(--dark) 25%, rgba(96,165,250,.12) 50%, var(--dark) 75%); background-size: 200% 100%; animation: nx-shimmer 1.4s infinite; }
+.nx-skel-circle { width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(90deg, var(--dark) 25%, rgba(96,165,250,.12) 50%, var(--dark) 75%); background-size: 200% 100%; animation: nx-shimmer 1.4s infinite; }
+.nx-skel-card { height: 120px; border-radius: 14px; background: linear-gradient(90deg, var(--dark) 25%, rgba(96,165,250,.12) 50%, var(--dark) 75%); background-size: 200% 100%; animation: nx-shimmer 1.4s infinite; }
+
+/* ────────────────────────────────────────────────────────────
+   74. ICON BUTTONS / FAB VARIANTS
+   ──────────────────────────────────────────────────────────── */
+.nx-icon-btn { width: 38px; height: 38px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; background: var(--glass); border: 1px solid var(--border); color: var(--ts); cursor: pointer; transition: all var(--nx-fast); }
+.nx-icon-btn:hover { background: var(--glass-b); color: var(--light); transform: translateY(-2px); }
+
+/* ────────────────────────────────────────────────────────────
+   75. DIVIDED LIST ROWS
+   ──────────────────────────────────────────────────────────── */
+.nx-list-row { display: flex; align-items: center; justify-content: space-between; padding: 11px 2px; border-bottom: 1px solid var(--border); transition: background var(--nx-fast); }
+.nx-list-row:last-child { border-bottom: none; }
+.nx-list-row:hover { background: rgba(59,130,246,.04); }
+
+/* ────────────────────────────────────────────────────────────
+   76. PROGRESS RING (conic)
+   ──────────────────────────────────────────────────────────── */
+.nx-ring-progress { width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center; background: conic-gradient(var(--bright) calc(var(--p, 50) * 1%), rgba(96,165,250,.12) 0); }
+.nx-ring-progress::before { content: ""; position: absolute; width: 48px; height: 48px; border-radius: 50%; background: var(--dark); }
+.nx-ring-progress span { position: relative; font-size: 13px; font-weight: 800; }
+
+/* ────────────────────────────────────────────────────────────
+   77. SOFT SHADOWS ON KEY SURFACES
+   ──────────────────────────────────────────────────────────── */
+.modal, .notif-panel, .copilot-panel, .gs-results { box-shadow: var(--nx-shadow-3) !important; }
+
+/* ────────────────────────────────────────────────────────────
+   78. HOVER UNDERLINE LINKS
+   ──────────────────────────────────────────────────────────── */
+.login-switch a, .nx-link { position: relative; }
+.login-switch a::after, .nx-link::after { content: ""; position: absolute; left: 0; bottom: -2px; width: 0; height: 1.5px; background: var(--light); transition: width var(--nx-fast); }
+.login-switch a:hover::after, .nx-link:hover::after { width: 100%; }
+
+/* ────────────────────────────────────────────────────────────
+   79. CARD CORNER ACCENT
+   ──────────────────────────────────────────────────────────── */
+.card.nx-accent { border-top: 2px solid var(--bright); }
+.card.nx-accent-gold { border-top: 2px solid var(--gold); }
+.card.nx-accent-em { border-top: 2px solid var(--em); }
+
+/* ────────────────────────────────────────────────────────────
+   80. RESPONSIVE GRID HELPERS
+   ──────────────────────────────────────────────────────────── */
+@media (max-width: 1100px) { .dgrid { grid-template-columns: 1fr; } }
+@media (min-width: 1600px) { .stats-grid { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); } }
+
+/* ────────────────────────────────────────────────────────────
+   81. FOCUS-WITHIN CARD HIGHLIGHT (forms in cards)
+   ──────────────────────────────────────────────────────────── */
+.card:focus-within { border-color: rgba(96,165,250,.35) !important; }
+
+/* ────────────────────────────────────────────────────────────
+   82. ANIMATED COUNT-UP HINT (value flash on change)
+   ──────────────────────────────────────────────────────────── */
+.sc-value { transition: color .4s ease; }
+
+/* ────────────────────────────────────────────────────────────
+   83. PRINT — hide decorative aurora
+   ──────────────────────────────────────────────────────────── */
+@media print { .wrap::before, .nx-bg-aurora::before { display: none !important; } }
+
+/* ────────────────────────────────────────────────────────────
+   84. MOTION SAFETY
+   ──────────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }

@@ -1,0 +1,94 @@
+/* ════════════════════════════════════════════════════════════════════════
+   NEXORA — PERFORMANCE & FULL RESPONSIVENESS · LAYER 6
+   Speeds up rendering and makes EVERY screen (6" phones → large desktops)
+   show everything compactly, with no horizontal overflow.
+   ════════════════════════════════════════════════════════════════════════ */
+
+/* ── Layout integrity: never overflow horizontally, always use full width ── */
+html, body, #root { max-width: 100vw; overflow-x: hidden; }
+.wrap, .main, .page { max-width: 100%; box-sizing: border-box; }
+.page { width: 100%; }
+/* Prevent fl/grid children from forcing the page wider than the screen. */
+* { min-width: 0; }
+.table-scroll { max-width: 100%; }
+
+/* ── Performance ── */
+.wrap::before { animation: none !important; }
+.sb-title, .login-title { animation: none !important; }
+.table-scroll { content-visibility: auto; contain-intrinsic-size: 1px 700px; }
+tbody tr:nth-child(n+14) { animation: none !important; }
+tr:hover { transform: none !important; box-shadow: none !important; }
+
+@media (max-width: 980px) {
+  /* Sidebar is off-canvas on mobile → main must be full width, no reserved gap. */
+  .main { margin: 0 !important; width: 100% !important; }
+  .card, .tabs, .badge, .pill { backdrop-filter: none !important; }
+  .wrap::before { display: none !important; }
+  .stats-grid > *, .card { animation-duration: .28s !important; }
+  tbody tr { animation: none !important; }
+  .dgrid { grid-template-columns: 1fr !important; }
+}
+
+/* ── Tablets & all phones (≤820px): compact 2-up stat cards ── */
+@media (max-width: 820px) {
+  .page { padding: 12px !important; }
+  .stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px !important; margin-bottom: 16px !important;
+  }
+  .stat-card { padding: 13px !important; border-radius: 14px !important; }
+  .sc-value { font-size: 17px !important; }
+  .sc-icon { width: 32px; height: 32px; font-size: 15px; margin-bottom: 7px; }
+  .sc-label { font-size: 10.5px; }
+  .sc-sub { font-size: 10px; }
+  .card { border-radius: 13px !important; margin-bottom: 12px; }
+  .card-hdr { padding: 11px 13px !important; }
+  .card-title { font-size: 13px !important; }
+  .card-actions { gap: 7px !important; }
+  th, td { padding: 8px !important; font-size: 11.5px !important; white-space: nowrap; }
+  .btn { padding: 7px 11px; font-size: 12px; }
+  .btn-sm { padding: 4px 8px; font-size: 11px; }
+  .modal { max-width: 100% !important; }
+  .form-grid { grid-template-columns: 1fr 1fr !important; }
+  /* self-contained overlays fit the screen */
+  .nx-finance-panel { width: 100% !important; max-height: 96vh !important; border-radius: 14px !important; }
+  #nx-finance-print { padding: 12px !important; }
+  .copilot-panel { width: calc(100vw - 24px) !important; height: 70vh !important; left: 12px !important; right: 12px !important; }
+}
+
+/* ── Large phones (≤600px) ── */
+@media (max-width: 600px) {
+  .form-grid { grid-template-columns: 1fr !important; }
+  .modal { border-radius: 16px 16px 0 0 !important; }
+  .login-card { padding: 30px 22px !important; }
+  /* welcome / alert banners more compact */
+  .alert-bar { padding: 9px 11px !important; font-size: 12px; }
+}
+
+/* ── Small phones (≤430px) ── */
+@media (max-width: 430px) {
+  .page { padding: 10px !important; }
+  .topbar { padding: 0 10px !important; }
+  .topbar-title { font-size: 14px !important; }
+  .stats-grid { gap: 8px !important; }
+  .sc-value { font-size: 15px !important; }
+  .sc-label { font-size: 10px; }
+  .tabs { width: 100%; overflow-x: auto; }
+  .modal-body { padding: 14px !important; }
+}
+
+/* ── Very small (≤340px): single column ── */
+@media (max-width: 340px) {
+  .stats-grid { grid-template-columns: 1fr !important; }
+}
+
+/* ── Large desktops ── */
+@media (min-width: 1700px) {
+  .stats-grid { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+}
+
+@media (max-height: 480px) and (orientation: landscape) {
+  .modal, .nx-finance-panel { max-height: 94vh !important; }
+}
+
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }

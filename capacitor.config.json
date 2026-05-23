@@ -1,0 +1,13 @@
+{
+  "appId": "com.nexora.erp",
+  "appName": "Nexora ERP",
+  "webDir": "dist",
+  "bundledWebRuntime": false,
+  "backgroundColor": "#080f1e",
+  "server": {
+    "androidScheme": "https"
+  },
+  "android": {
+    "allowMixedContent": false
+  }
+}

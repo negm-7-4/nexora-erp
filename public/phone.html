@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Nexora — Phone Preview</title>
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 14px;
+      background: radial-gradient(ellipse at top, #10243e, #060a14);
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif; color: #cfe0f5;
+    }
+    .bar { display: flex; gap: 8px; align-items: center; }
+    .bar button {
+      background: #1a3a6e; color: #fff; border: 1px solid #2563eb; border-radius: 8px;
+      padding: 6px 12px; font-size: 12px; font-weight: 700; cursor: pointer;
+    }
+    .bar button.active { background: #2563eb; }
+    .bar small { color: #5b7ca6; }
+    .phone {
+      position: relative; background: #000; border: 12px solid #15151a;
+      border-radius: 46px; box-shadow: 0 30px 90px rgba(0,0,0,.7), 0 0 0 1px #2a2a33;
+      overflow: hidden; transition: width .25s ease, height .25s ease;
+    }
+    .notch {
+      position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+      width: 150px; height: 26px; background: #15151a; border-radius: 0 0 18px 18px; z-index: 5;
+    }
+    iframe { width: 100%; height: 100%; border: none; background: #080f1e; display: block; }
+  </style>
+</head>
+<body>
+  <div class="bar">
+    <small>📱 Live preview:</small>
+    <button data-w="390" data-h="844" class="active">iPhone 12/13 (390×844)</button>
+    <button data-w="360" data-h="780">Android (360×780)</button>
+    <button data-w="430" data-h="932">iPhone Pro Max (430×932)</button>
+    <button id="reload">↻ Reload</button>
+  </div>
+  <div class="phone" id="phone" style="width:390px;height:844px;">
+    <div class="notch"></div>
+    <iframe id="app" src="/" title="Nexora app"></iframe>
+  </div>
+  <script>
+    const phone = document.getElementById("phone");
+    const frame = document.getElementById("app");
+    document.querySelectorAll(".bar button[data-w]").forEach((b) => {
+      b.onclick = () => {
+        document.querySelectorAll(".bar button[data-w]").forEach((x) => x.classList.remove("active"));
+        b.classList.add("active");
+        phone.style.width = b.dataset.w + "px";
+        phone.style.height = b.dataset.h + "px";
+      };
+    });
+    document.getElementById("reload").onclick = () => { frame.src = frame.src; };
+  </script>
+</body>
+</html>
