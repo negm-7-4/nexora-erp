@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback, createContext, useCont
 import { createPortal } from "react-dom";
 import { db, auth, setTenantId, firebaseEnabled } from "./lib/firebase.js";
 import { idbGet, idbSet, idbDel } from "./lib/idb.js";
-import { signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, createUserWithEmailAndPassword, updateProfile, setPersistence, browserLocalPersistence, browserSessionPersistence, updateEmail, updatePassword, reauthenticateWithCredential, EmailAuthProvider, GoogleAuthProvider, OAuthProvider, signInWithPopup, signInWithRedirect, getAdditionalUserInfo } from "firebase/auth";
+import { signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, createUserWithEmailAndPassword, updateProfile, setPersistence, browserLocalPersistence, browserSessionPersistence, updateEmail, updatePassword, reauthenticateWithCredential, EmailAuthProvider, GoogleAuthProvider, OAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, getAdditionalUserInfo } from "firebase/auth";
 import { LanguageProvider, useLanguage, DynText } from "./context/LanguageContext.jsx";
 import { useAppStore, EMPTY_DATA } from './lib/store.js';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, BarChart, Bar, Legend, PieChart, Pie, Cell, CartesianGrid } from 'recharts';
@@ -4839,6 +4839,23 @@ function LoginPage({ onLogin, checkActive }) {
   const [rememberMe, setRememberMe] = useState(true);
   const [showP, setShowP] = useState(false);
 
+  /* Complete a Google/Apple redirect sign-in when the app comes back.
+     Without this the redirect flow ends silently: successes are only picked
+     up by the auth listener and errors are never shown at all. */
+  useEffect(() => {
+    if (!firebaseEnabled) return;
+    getRedirectResult(auth).then(result => {
+      if (result && result.user) {
+        toast.success(`Welcome back, ${result.user.displayName?.split(' ')[0] || ''} 👋`);
+      }
+    }).catch(error => {
+      if (error.code !== 'auth/popup-closed-by-user' && error.code !== 'auth/cancelled-popup-request') {
+        setErr(`❌ Sign-in failed: ${error.message || error.code}`);
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handleLogin = async () => {
     if (!email||!p){setErr('Please enter email and password');return;}
     setLoading(true);
@@ -4914,14 +4931,16 @@ function LoginPage({ onLogin, checkActive }) {
       } else {
         const isOfflineError = !navigator.onLine || error.code === 'auth/network-request-failed'
           || (error.message || '').includes('fetch');
+        const codeTag = error.code ? ` (${error.code})` : '';
         if (error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
            setErr('❌ Incorrect email or password');
         } else if (isOfflineError) {
-           setErr('📵 Could not reach the sign-in server. Check your connection — or create an account to work offline.');
+           setErr('📵 Could not reach the sign-in server. Check your connection — or create an account to work offline.' + codeTag);
         } else if (error.code === 'auth/operation-not-allowed' || error.code === 'auth/invalid-api-key' || String(error.code || '').startsWith('auth/api-key')) {
-           setErr('⚠️ Cloud sign-in is not configured. Create a new account to work locally, or connect Firebase/MongoDB from Power Tools.');
+           setErr('⚠️ Cloud sign-in is not configured. Create a new account to work locally, or connect Firebase/MongoDB from Power Tools.' + codeTag);
         } else {
-           setErr(error.message ? error.message : '❌ Incorrect email or password');
+           // Firebase messages already embed their (auth/…) code
+           setErr(error.message ? error.message : '❌ Sign-in failed' + codeTag);
         }
       }
     }
@@ -4999,6 +5018,12 @@ function LoginPage({ onLogin, checkActive }) {
           }
           await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence);
           const provider = new GoogleAuthProvider();
+          if (Capacitor.isNativePlatform()) {
+            // Popups don't exist inside the Android WebView — use the full
+            // redirect flow; getRedirectResult() completes it when we return.
+            await signInWithRedirect(auth, provider);
+            return;
+          }
           const result = await signInWithPopup(auth, provider);
           const user = result.user;
           
@@ -5052,6 +5077,10 @@ function LoginPage({ onLogin, checkActive }) {
         try {
           await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence);
           const provider = new OAuthProvider('apple.com');
+          if (Capacitor.isNativePlatform()) {
+            await signInWithRedirect(auth, provider);
+            return;
+          }
           const result = await signInWithPopup(auth, provider);
           const user = result.user;
           
@@ -6410,16 +6439,17 @@ function AppInner() {
       // Listen for auth state changes
       const unsubAuth = onAuthStateChanged(auth, async (firebaseUser) => {
         if (firebaseUser) {
-          // Check whether the user was deleted (banned) by the admin
-          // Use lastSource.current to ensure data is loaded, or use fbData
+          // Check whether the user was deleted (banned) by the admin.
+          // Owners/super-admins are exempt — otherwise deleting your own
+          // duplicate entry locks the owner out of every device forever.
           const currentEmailSafe = String(firebaseUser.email || '').toLowerCase();
-          if (currentDataRef.current && currentDataRef.current.bannedEmails && currentDataRef.current.bannedEmails.some(e => String(e).toLowerCase() === currentEmailSafe)) {
+          const isSuperAdmin = currentEmailSafe === 'negm@nile.com' || currentEmailSafe === 'aboalaa@nile.com';
+          const knownOwner = isSuperAdmin || localStorage.getItem('nile_is_owner') === 'true';
+          if (!knownOwner && currentDataRef.current && currentDataRef.current.bannedEmails && currentDataRef.current.bannedEmails.some(e => String(e).toLowerCase() === currentEmailSafe)) {
              await signOut(auth);
              toast.error('⛔ This account was deleted by the admin.');
              return;
           }
-
-          const isSuperAdmin = currentEmailSafe === 'negm@nile.com' || currentEmailSafe === 'aboalaa@nile.com';
           
           // [SaaS] Resolve the company's tenant workspace using the central database
           let resolvedTenantId = 'nile_erp_main';
