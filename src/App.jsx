@@ -4935,10 +4935,31 @@ function LoginPage({ onLogin, checkActive }) {
       }
     } catch (error) {
       console.error(error);
+      const localOk = await verifyLocalCreds(email, p);
+      // The account exists on this device but not in the cloud: promote it to
+      // a real Firebase account with the same credentials. Local-only sessions
+      // can never pass Firestore security rules, so without this the account
+      // is permanently cut off from sync.
+      const missingInCloud = error.code === 'auth/user-not-found'
+        || error.code === 'auth/invalid-credential'
+        || error.code === 'auth/invalid-login-credentials';
+      if (localOk && missingInCloud && firebaseEnabled) {
+        try {
+          const result = await createUserWithEmailAndPassword(auth, email, p);
+          const isActive = checkActive(email);
+          if (!isActive) { await signOut(auth); setErr('⛔ This account is disabled'); setLoading(false); return; }
+          toast.success('Account linked to the cloud — sync enabled ☁️');
+          onLogin({ uid: result.user.uid, name: result.user.displayName || 'User', email: result.user.email, photoURL: result.user.photoURL });
+          setLoading(false);
+          return;
+        } catch (promoteErr) {
+          console.warn('Cloud promotion failed, signing in locally instead:', promoteErr.code || promoteErr.message);
+        }
+      }
       // Whatever the cloud said (account missing there, network down, project
       // misconfigured…), accounts registered on THIS device must still work —
       // always try the local vault as the last resort.
-      if (await verifyLocalCreds(email, p)) {
+      if (localOk) {
         const isActive = checkActive(email);
         if (!isActive) { setErr('⛔ This account is disabled'); setLoading(false); return; }
         toast.success('Signed in locally 👋');
@@ -6288,6 +6309,7 @@ function AppInner() {
   const lastSource                = useRef(null);
   const dataLoadedRef             = useRef(false);
   const startSubscriptionRef      = useRef(() => {});
+  const permDeniedWarned          = useRef(false);
   const [fbData, setFbData] = useState(null);
   const [showNotif, setShowNotif] = useState(false);
   const [saving, setSaving]       = useState(false);
@@ -6387,6 +6409,10 @@ function AppInner() {
               // workspace) if nothing has been loaded yet.
               if (newData && (newData._isConnectionError || newData._connectionError)) {
                 setSysStatus('offline');
+                if (newData._permissionDenied && !permDeniedWarned.current) {
+                  permDeniedWarned.current = true;
+                  toast.error('⚠️ Cloud database refused access (Firestore security rules). Data stays on this device until the rules allow signed-in users.');
+                }
                 if (!dataLoadedRef.current) {
                   let cached = null;
                   try { cached = await idbGet('nile_data_cache'); } catch(e) {}
