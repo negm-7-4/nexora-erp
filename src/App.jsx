@@ -4810,14 +4810,21 @@ function Calculator() {
 ═══════════════════════════════════════════════════════ */
 const saveLocalCreds = async (email, password) => {
   const creds = JSON.parse(localStorage.getItem('nile_local_creds') || '{}');
-  creds[email] = await hashPassword(password); 
+  creds[String(email).trim().toLowerCase()] = await hashPassword(password);
   localStorage.setItem('nile_local_creds', JSON.stringify(creds));
 };
 
 const verifyLocalCreds = async (email, password) => {
   const creds = JSON.parse(localStorage.getItem('nile_local_creds') || '{}');
+  const key = String(email).trim().toLowerCase();
+  // Older versions stored the email with its original letter case.
+  const legacyKey = Object.keys(creds).find(k => k.toLowerCase() === key);
+  const stored = creds[key] ?? (legacyKey ? creds[legacyKey] : undefined);
+  if (!stored) return false;
   const hash = await hashPassword(password);
-  return creds[email] === hash || creds[email] === btoa(password);
+  let legacyB64 = null;
+  try { legacyB64 = btoa(password); } catch { /* non-latin password */ }
+  return stored === hash || (legacyB64 !== null && stored === legacyB64);
 };
 
 function LoginPage({ onLogin, checkActive }) {
@@ -4896,16 +4903,25 @@ function LoginPage({ onLogin, checkActive }) {
       }
     } catch (error) {
       console.error(error);
-      const isOfflineError = !navigator.onLine || error.message.includes('fetch') || error.message.includes('Failed to fetch');
-      if (isOfflineError && await verifyLocalCreds(email, p)) {
+      // Whatever the cloud said (account missing there, network down, project
+      // misconfigured…), accounts registered on THIS device must still work —
+      // always try the local vault as the last resort.
+      if (await verifyLocalCreds(email, p)) {
         const isActive = checkActive(email);
         if (!isActive) { setErr('⛔ This account is disabled'); setLoading(false); return; }
+        toast.success('Signed in locally 👋');
         onLogin({ email, name: 'Local User', uid: 'local_'+Date.now(), isLocal: true });
       } else {
+        const isOfflineError = !navigator.onLine || error.code === 'auth/network-request-failed'
+          || (error.message || '').includes('fetch');
         if (error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
            setErr('❌ Incorrect email or password');
+        } else if (isOfflineError) {
+           setErr('📵 Could not reach the sign-in server. Check your connection — or create an account to work offline.');
+        } else if (error.code === 'auth/operation-not-allowed' || error.code === 'auth/invalid-api-key' || String(error.code || '').startsWith('auth/api-key')) {
+           setErr('⚠️ Cloud sign-in is not configured. Create a new account to work locally, or connect Firebase/MongoDB from Power Tools.');
         } else {
-           setErr(error.message && !isOfflineError ? error.message : '❌ Incorrect email or password');
+           setErr(error.message ? error.message : '❌ Incorrect email or password');
         }
       }
     }
@@ -4952,10 +4968,24 @@ function LoginPage({ onLogin, checkActive }) {
       toast.success(`Welcome ${name}! Your account was created successfully 🎉`);
     } catch (e) {
       console.error(e);
-      if(e.code==='auth/email-already-in-use' || (e.message && e.message.toLowerCase().includes('already exists'))) {
+      if (e.code === 'auth/email-already-in-use' || (e.message && e.message.toLowerCase().includes('already exists'))) {
         setErr('⚠️ This email is already registered. Try signing in instead.');
+      } else if (e.code === 'auth/weak-password') {
+        setErr('❌ Password is too weak — use at least 6 characters');
+      } else if (e.code === 'auth/invalid-email') {
+        setErr('❌ Invalid email address');
+      } else {
+        // Cloud signup unavailable (offline / misconfigured project) — create
+        // the account locally so the user can start working right away.
+        try {
+          await saveLocalCreds(email, p);
+          toast.success(`Welcome ${name}! Account created on this device 🎉`);
+          if (onLogin) onLogin({ email, name, uid: 'local_' + Date.now(), isLocal: true });
+          return;
+        } catch {
+          setErr(e.message && !e.message.includes('fetch') ? `❌ ${e.message}` : '❌ Error creating account');
+        }
       }
-      else setErr(e.message && !e.message.includes('fetch') ? `❌ ${e.message}` : '❌ Error creating account');
       setLoading(false);
     }
   };
@@ -6212,6 +6242,8 @@ function AppInner() {
   useEffect(() => { currentDataRef.current = data; }, [data]);
 
   const lastSource                = useRef(null);
+  const dataLoadedRef             = useRef(false);
+  const startSubscriptionRef      = useRef(() => {});
   const [fbData, setFbData] = useState(null);
   const [showNotif, setShowNotif] = useState(false);
   const [saving, setSaving]       = useState(false);
@@ -6276,6 +6308,7 @@ function AppInner() {
              }
           }
           if (cachedData) {
+              dataLoadedRef.current = true;
               startTransition(() => {
                 dispatch({ type: 'REPLACE', payload: cachedData, noMerge: true });
                 setDataLoaded(true);
@@ -6294,10 +6327,22 @@ function AppInner() {
         if (isSubscribed) return;
         let cancelled = false;
         unsubDb = db.subscribe(async (newData) => {
-              // Fixed: allow empty data through to init a new account; ignore only connection errors
+              // Connection errors: show offline, but never leave the user stuck
+              // on the skeleton — fall back to the local copy (or a fresh
+              // workspace) if nothing has been loaded yet.
               if (newData && (newData._isConnectionError || newData._connectionError)) {
                 setSysStatus('offline');
-                return; 
+                if (!dataLoadedRef.current) {
+                  let cached = null;
+                  try { cached = await idbGet('nile_data_cache'); } catch(e) {}
+                  dataLoadedRef.current = true;
+                  lastSource.current = 'local';
+                  startTransition(() => {
+                    dispatch({ type: 'REPLACE', payload: cached || EMPTY_DATA });
+                    setDataLoaded(true);
+                  });
+                }
+                return;
               }
 
               let localLastMod = 0;
@@ -6346,6 +6391,7 @@ function AppInner() {
                    try { await idbDel('nile_data_cache'); } catch(e) {}
                 }
               }
+          dataLoadedRef.current = true;
           startTransition(() => {
             setSysStatus('online');
             setDataLoaded(true);
@@ -6357,6 +6403,9 @@ function AppInner() {
         unsubDb = () => { cancelled = true; };
         isSubscribed = true;
       };
+      // Expose it so a local login can kick off the data feed (on a fresh
+      // device nothing else ever starts it, leaving the skeleton forever).
+      startSubscriptionRef.current = startSubscription;
       
       // Listen for auth state changes
       const unsubAuth = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -6419,8 +6468,10 @@ function AppInner() {
         } else {
         const sessionUser = db.loadSession();
         if (sessionUser && sessionUser.isLocal) {
-          setTenantId(sessionUser.tenantId);
-          localStorage.setItem('nile_tenant_id', sessionUser.tenantId);
+          if (sessionUser.tenantId) {
+            setTenantId(sessionUser.tenantId);
+            localStorage.setItem('nile_tenant_id', sessionUser.tenantId);
+          }
           startSubscription(); // sync data for the local user when offline
         }
         setUser(sessionUser?.isLocal ? sessionUser : null);
@@ -6705,9 +6756,15 @@ function AppInner() {
     if (localUser) {
       setUser(localUser);
       db.saveSession(localUser);
+      if (localUser.tenantId) {
+        setTenantId(localUser.tenantId);
+        localStorage.setItem('nile_tenant_id', localUser.tenantId);
+      }
+      // Fresh device: the boot-time auth listener saw no session, so the data
+      // feed was never started — start it now or dataLoaded never turns true.
+      startSubscriptionRef.current();
     }
-    // For local sign-in, data is already loaded from cache via db.subscribe
-  }; 
+  };
 
   const handleLogout = useCallback(async () => {
     await signOut(auth);
