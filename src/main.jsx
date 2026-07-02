@@ -11,6 +11,7 @@ import "./styles/enhanced4.css";
 import "./styles/enhanced5.css";
 import "./styles/enhanced6.css";
 import "./styles/ux-enhancements.css";
+import "./styles/mobile.css";
 import "./lib/storage.js";
 
 // Seed the platform Super Admin credentials for local (offline) login.

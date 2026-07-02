@@ -7047,7 +7047,7 @@ function AppInner() {
         </div>
         <main className={"main" + (collapsed ? ' collapsed' : '')}>
           <div className="topbar">
-            <div style={{display:'flex',alignItems:'center',gap:12}}>
+            <div className="topbar-left" style={{display:'flex',alignItems:'center',gap:12,minWidth:0}}>
               {isElectron && (
                 <div className="win-controls" style={{display:'flex',gap:6,marginInlineStart:10}}>
                   <button className="btn btn-icon btn-sm" style={{background:'var(--rose)',color:'#fff',width:26,height:26,padding:0}} onClick={()=>winCtrl('app-close')}>✕</button>
@@ -7068,17 +7068,17 @@ function AppInner() {
                 {lang === 'ar' ? 'EN' : 'AR'}
               </button>
               <button className="tb-btn" style={{background:'linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%)', border:'1px solid rgba(139, 92, 246, 0.5)', boxShadow:'0 0 15px rgba(139, 92, 246, 0.4)', color:'#e2e8f0', padding:'8px 16px', letterSpacing:'0.5px', gap: '8px'}} onClick={() => setShowAI(!showAI)} title="SMART COPILOT">
-                <span style={{fontSize: '16px'}}>✨</span> <strong style={{background: 'linear-gradient(to right, #a78bfa, #22d3ee)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontFamily: 'system-ui, sans-serif', letterSpacing: '1px'}}>SMART</strong> <span style={{fontFamily: 'system-ui, sans-serif', fontWeight: 600, fontSize: '13px', color: '#cbd5e1'}}>COPILOT</span>
+                <span style={{fontSize: '16px'}}>✨</span> <strong className="tb-label" style={{background: 'linear-gradient(to right, #a78bfa, #22d3ee)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontFamily: 'system-ui, sans-serif', letterSpacing: '1px'}}>SMART</strong> <span className="tb-label" style={{fontFamily: 'system-ui, sans-serif', fontWeight: 600, fontSize: '13px', color: '#cbd5e1'}}>COPILOT</span>
               </button>
               <div className="notif-wrap" ref={notifRef}>
                 <button className="tb-btn" onClick={() => setShowNotif(v => !v)}>
-                🔔 <span><DynText>{t('notifications')}</DynText></span>
+                🔔 <span className="tb-label"><DynText>{t('notifications')}</DynText></span>
                   {alertCount > 0 && <span className="notif-dot" />}
                 </button>
                 {showNotif && <NotifPanel data={data} onClose={() => setShowNotif(false)} />}
               </div>
               <button className="tb-btn primary" onClick={() => { exportExcel(data); toast.info('Exporting file...'); }}>
-                📊 <span><DynText>{t('exportExcel')}</DynText></span>
+                📊 <span className="tb-label"><DynText>{t('exportExcel')}</DynText></span>
               </button>
             </div>
           </div>

@@ -1,0 +1,124 @@
+/* ════════════════════════════════════════════════════════════════════════
+   NEXORA — MOBILE-FIRST POLISH · LAYER 7
+   Makes the app feel native on phones: a topbar that fits, scrollable
+   tables, bottom-sheet modals, iOS-safe inputs and notch/safe-area support.
+   Loaded last so it wins over the inline app styles and layers 1–6.
+   ════════════════════════════════════════════════════════════════════════ */
+
+/* ── Native app safe areas (notch / gesture bar) — apply at every size ── */
+.topbar {
+  padding-top: env(safe-area-inset-top) !important;
+  height: calc(62px + env(safe-area-inset-top)) !important;
+}
+.sidebar { padding-top: env(safe-area-inset-top); }
+.bottom-nav { height: calc(65px + env(safe-area-inset-bottom)); }
+.toast-container { top: calc(18px + env(safe-area-inset-top)); }
+
+/* ════════════════ Phones & small tablets (≤900px) ════════════════ */
+@media screen and (max-width: 900px) {
+
+  /* ── Topbar: one clean row that always fits ── */
+  .topbar {
+    height: calc(56px + env(safe-area-inset-top)) !important;
+    padding-left: 10px !important;
+    padding-right: 10px !important;
+    gap: 8px;
+  }
+  .topbar-left { gap: 8px !important; flex: 1 1 auto; min-width: 0; overflow: hidden; }
+  .topbar-title {
+    font-size: 15px !important;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    min-width: 0;
+  }
+  /* the in-page banner already explains view-only mode */
+  .topbar .readonly-badge { display: none !important; }
+
+  /* icon-only action buttons */
+  .tb-label { display: none !important; }
+  .topbar-actions { gap: 6px !important; flex-shrink: 0; }
+  .topbar-actions .tb-btn {
+    padding: 8px 10px !important;
+    min-width: 38px; min-height: 38px;
+    justify-content: center;
+  }
+  .notif-panel { position: fixed; top: calc(60px + env(safe-area-inset-top)); left: 10px; right: 10px; width: auto; }
+
+  /* compact global search that expands on focus */
+  .global-search { margin: 0 !important; flex-shrink: 1; min-width: 0; }
+  .global-search .gs-input { width: 105px !important; }
+  .global-search .gs-input:focus { width: 150px !important; }
+  .gs-results { position: fixed; top: calc(60px + env(safe-area-inset-top)); left: 10px; right: 10px; width: auto; }
+
+  /* ── Tables: horizontal swipe instead of clipping ── */
+  table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; max-width: 100%; }
+  .table-scroll table, .inv-table, table.print-only { display: table; }
+  .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+  /* ── Touch targets ── */
+  .btn { min-height: 40px; }
+  .btn-sm { min-height: 32px; }
+  .btn-icon { min-width: 40px; }
+  .tab-btn { padding: 9px 12px; min-height: 38px; }
+  .nav-item { padding: 12px !important; }
+  .todo-check, .toast-close { padding: 6px; }
+
+  /* thin scrollbars feel desktop-y — hide them, touch scrolling remains */
+  ::-webkit-scrollbar { width: 0; height: 0; }
+
+  /* keep content clear of the bottom nav + gesture bar */
+  .main { padding-bottom: calc(72px + env(safe-area-inset-bottom)) !important; }
+  .fab { bottom: calc(78px + env(safe-area-inset-bottom)); }
+  .ai-panel { padding-bottom: env(safe-area-inset-bottom); }
+}
+
+/* ════════════════ Phones (≤600px) ════════════════ */
+@media screen and (max-width: 600px) {
+
+  /* ── iOS zooms into any input under 16px — prevent it ── */
+  .fi, select.fi, textarea.fi, .login-input, .gs-input, .ai-input, .cell-input {
+    font-size: 16px !important;
+  }
+  .fi { padding: 10px 12px !important; }
+  .login-input { padding: 14px 15px !important; }
+
+  /* ── Modals become bottom sheets ── */
+  .modal-ov { align-items: flex-end !important; padding: 0 !important; }
+  .modal {
+    max-width: 100% !important;
+    width: 100% !important;
+    max-height: calc(100dvh - 40px) !important;
+    border-radius: 20px 20px 0 0 !important;
+    padding-bottom: env(safe-area-inset-bottom);
+    animation: sheetUp .28s cubic-bezier(0.32, 0.72, 0, 1) !important;
+  }
+  .modal-footer { flex-wrap: wrap; }
+  .modal-footer .btn { flex: 1 1 auto; justify-content: center; }
+
+  /* full-width primary actions read better on a phone */
+  .card-actions { width: auto; }
+  .mfilter { padding: 10px 12px; gap: 8px; }
+
+  /* filter/tab strips scroll sideways instead of wrapping into a mess */
+  .tabs { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .tabs .tab-btn { flex: 0 0 auto; }
+
+  /* charts: let the tooltip layer above the bottom nav */
+  .recharts-tooltip-wrapper { z-index: 60; }
+}
+
+@keyframes sheetUp {
+  from { transform: translateY(40px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+/* ════════════════ Small phones (≤430px) ════════════════ */
+@media screen and (max-width: 430px) {
+  .topbar { padding-left: 8px !important; padding-right: 8px !important; }
+  /* search collapses to icon width, expands on tap */
+  .global-search .gs-input { width: 74px !important; padding: 6px 8px 6px 26px !important; }
+  .global-search .gs-input:focus { width: 140px !important; }
+  .topbar-actions .tb-btn { min-width: 36px; padding: 7px 8px !important; }
+  .detail-hdr { padding: 14px !important; }
+  .confirm-box { padding: 22px 16px; }
+  .login-card { padding: 26px 18px !important; }
+}
