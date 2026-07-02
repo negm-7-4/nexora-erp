@@ -260,7 +260,10 @@ export const db = {
         .then((fs) => fs.onSnapshot(
           fs.doc(firestore, "appData", docId),
           (snap) => callback(snap.exists() ? snap.data() : null),
-          (err) => { console.warn("Firestore subscribe error:", err); callback({ _connectionError: true }); }
+          (err) => {
+            console.warn("Firestore subscribe error:", err);
+            callback({ _connectionError: true, _permissionDenied: err && err.code === "permission-denied" });
+          }
         ))
         .catch((e) => { console.warn("Firestore subscribe failed, using local cache:", e); emitLocal(); return () => {}; });
     }
