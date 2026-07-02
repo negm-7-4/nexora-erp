@@ -7,8 +7,8 @@ android {
         applicationId "com.nexora.erp"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        versionCode 2
+        versionName "1.1"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -16,8 +16,27 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    // Stable signing: every build must carry the SAME signature or Android
+    // refuses to install updates over the previous APK. The keystore is NOT
+    // committed (public repo) — CI restores it from the ANDROID_KEYSTORE_B64
+    // repository secret; locally, drop nexora-release.keystore into android/.
+    def stableKeystore = file('../nexora-release.keystore')
+    signingConfigs {
+        if (stableKeystore.exists()) {
+            stable {
+                storeFile stableKeystore
+                storePassword System.getenv('ANDROID_KEYSTORE_PASS') ?: 'nexora2026'
+                keyAlias System.getenv('ANDROID_KEY_ALIAS') ?: 'nexora'
+                keyPassword System.getenv('ANDROID_KEYSTORE_PASS') ?: 'nexora2026'
+            }
+        }
+    }
     buildTypes {
+        debug {
+            if (stableKeystore.exists()) signingConfig signingConfigs.stable
+        }
         release {
+            if (stableKeystore.exists()) signingConfig signingConfigs.stable
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }

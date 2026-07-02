@@ -10,6 +10,8 @@
  * nav items / buttons), keeping it loosely coupled and safe.
  */
 import { useState, useEffect, useRef, useCallback } from "react";
+import { idbGet, idbSet } from "../lib/idb.js";
+import { saveTextFile } from "../lib/native.js";
 
 const ACCENTS = [
   { id: "", label: "Default", dot: "#2563eb" },
@@ -39,17 +41,22 @@ function parseFirebaseConfig(text) {
   return obj;
 }
 
-/* Download the current workspace data as a JSON backup file. */
-function backupData() {
+/* Download the current workspace data as a JSON backup file.
+   The live cache moved from localStorage to IndexedDB, so read IndexedDB
+   first — the old localStorage key is only a legacy fallback. */
+async function backupData() {
   try {
-    const raw = localStorage.getItem("nile_data_cache") || "{}";
-    const blob = new Blob([raw], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `nexora_backup_${new Date().toISOString().split("T")[0]}.json`;
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    let data = await idbGet("nile_data_cache");
+    if (!data) {
+      const raw = localStorage.getItem("nile_data_cache");
+      data = raw ? JSON.parse(raw) : null;
+    }
+    if (!data) { alert("No data to back up yet."); return; }
+    await saveTextFile(
+      `nexora_backup_${new Date().toISOString().split("T")[0]}.json`,
+      JSON.stringify(data),
+      "application/json"
+    );
   } catch (e) { alert("Backup failed: " + e.message); }
 }
 
@@ -62,12 +69,16 @@ function restoreData() {
     const file = input.files?.[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = () => {
+    reader.onload = async () => {
       try {
         const data = JSON.parse(reader.result);
         if (!data || typeof data !== "object") throw new Error("Invalid file");
         if (!confirm("This will replace your current data with the backup. Continue?")) return;
-        localStorage.setItem("nile_data_cache", JSON.stringify(data));
+        // The app reads the IndexedDB cache first (and syncs by lastModified),
+        // so write there and stamp the copy as newest or the restore is ignored.
+        data.lastModified = Date.now();
+        await idbSet("nile_data_cache", data);
+        try { localStorage.removeItem("nile_data_cache"); } catch { /* ignore */ }
         location.reload();
       } catch (e) { alert("Restore failed: " + e.message); }
     };
@@ -134,6 +145,17 @@ export default function PowerTools() {
     { type: "action", label: "💾 Backup data (download JSON)", run: backupData },
     { type: "action", label: "♻️ Restore data (upload JSON)", run: restoreData },
     { type: "action", label: "🔥 Connect Firebase (cloud sync)", run: () => { setOpen(false); setFbErr(""); setFbOpen(true); } },
+    { type: "action", label: "🗄 Connect MongoDB server (API URL)", run: () => {
+        const current = (() => { try { return localStorage.getItem("nile_api_url") || ""; } catch { return ""; } })();
+        const url = prompt("Server API URL (e.g. https://my-server.com/api).\nLeave empty to disconnect:", current);
+        if (url === null) return; // cancelled
+        try {
+          if (url.trim()) localStorage.setItem("nile_api_url", url.trim());
+          else localStorage.removeItem("nile_api_url");
+          alert(url.trim() ? "✅ Server connected — reloading." : "Server disconnected — reloading.");
+          location.reload();
+        } catch (e) { alert("Failed to save: " + e.message); }
+      } },
     { type: "action", label: "↕️ Toggle compact density", run: () => { document.body.classList.toggle("nx-density-compact"); try { localStorage.setItem("nx_density", document.body.classList.contains("nx-density-compact") ? "compact" : ""); } catch { /* */ } } },
     { type: "action", label: "⬆️ Scroll to top", run: () => window.scrollTo({ top: 0, behavior: "smooth" }) },
     { type: "action", label: "🎨 Open Appearance settings", run: () => setOpen(true) },

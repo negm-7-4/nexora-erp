@@ -2,12 +2,12 @@ import React, { useState, useEffect, useRef, useCallback, createContext, useCont
 import { createPortal } from "react-dom";
 import { db, auth, setTenantId, firebaseEnabled } from "./lib/firebase.js";
 import { idbGet, idbSet, idbDel } from "./lib/idb.js";
-import { signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, createUserWithEmailAndPassword, updateProfile, setPersistence, browserLocalPersistence, browserSessionPersistence, updateEmail, updatePassword, reauthenticateWithCredential, EmailAuthProvider, GoogleAuthProvider, OAuthProvider, signInWithPopup, signInWithRedirect, getAdditionalUserInfo } from "firebase/auth";
+import { signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, createUserWithEmailAndPassword, updateProfile, setPersistence, browserLocalPersistence, browserSessionPersistence, updateEmail, updatePassword, reauthenticateWithCredential, EmailAuthProvider, GoogleAuthProvider, OAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, getAdditionalUserInfo } from "firebase/auth";
 import { LanguageProvider, useLanguage, DynText } from "./context/LanguageContext.jsx";
 import { useAppStore, EMPTY_DATA } from './lib/store.js';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, BarChart, Bar, Legend, PieChart, Pie, Cell, CartesianGrid } from 'recharts';
 import { api } from './lib/api.js'; // API client (MongoDB backend, optional)
-import { Capacitor, PushNotifications } from './lib/native.js'; // web-safe native shims
+import { Capacitor, PushNotifications, saveTextFile } from './lib/native.js'; // web-safe native shims
 
 /* ═══════════════════════════════════════════════════════
    GLOBAL STYLES
@@ -1302,8 +1302,8 @@ function exportExcel(data) {
   
   const compName = data.companyInfo?.name || 'Company';
   
-  const totalExpensesM = incM.reduce((s,r) => s + r.totalExpenses, 0) + data.expenses.reduce((s,e) => s + (inMonth(e.date) ? e.amount : 0), 0);
-  const totalSalesM = salesM.reduce((s,r) => s + r.totalAmount, 0);
+  const totalExpensesM = incM.reduce((s,r) => s + (r.totalExpenses || 0), 0) + data.expenses.reduce((s,e) => s + (inMonth(e.date) ? (e.amount || 0) : 0), 0);
+  const totalSalesM = salesM.reduce((s,r) => s + (r.totalAmount || 0), 0);
 
   const STYLES = `<Styles>
 <Style ss:ID="def"><Alignment ss:Horizontal="Right" ss:Vertical="Center"/><Font ss:FontName="Arial" ss:Size="11"/></Style>
@@ -1322,6 +1322,9 @@ function exportExcel(data) {
 </Styles>`;
 
   const C = (v, sid) => {
+    // A NaN/Infinity inside <Data ss:Type="Number"> makes Excel reject the
+    // whole file, so coerce any non-finite number (missing fields) to 0.
+    if (typeof v === 'number' && !Number.isFinite(v)) v = 0;
     const t = typeof v === 'number' ? 'Number' : 'String';
     return `<Cell ss:StyleID="${sid}"><Data ss:Type="${t}">${esc(v ?? '')}</Data></Cell>`;
   };
@@ -1373,11 +1376,11 @@ function exportExcel(data) {
     return s;
   };
 
-  const tSales = data.sales.reduce((s,r)=>s+r.totalAmount,0);
-  const tPaid  = data.sales.reduce((s,r)=>s+r.paid,0);
-  const tRem   = data.sales.reduce((s,r)=>s+r.remaining,0);
-  const tInc   = data.incoming.reduce((s,r)=>s+r.totalExpenses,0);
-  const tWork  = data.workers.reduce((s,w)=>s+w.totalEarned,0);
+  const tSales = data.sales.reduce((s,r)=>s+(r.totalAmount||0),0);
+  const tPaid  = data.sales.reduce((s,r)=>s+(r.paid||0),0);
+  const tRem   = data.sales.reduce((s,r)=>s+(r.remaining||0),0);
+  const tInc   = data.incoming.reduce((s,r)=>s+(r.totalExpenses||0),0);
+  const tWork  = data.workers.reduce((s,w)=>s+(w.totalEarned||0),0);
 
   const buildSheet = (name, title, hdrs, rows, tots) => {
     const nc = hdrs.length;
@@ -1435,12 +1438,8 @@ function exportExcel(data) {
     `</Workbook>`
   ].join('\n');
 
-  const blob = new Blob(['\uFEFF' + xml], { type: 'application/vnd.ms-excel;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = `Report_${compName.replace(/\s+/g, '_')}_${today()}.xls`;
-  document.body.appendChild(a); a.click();
-  document.body.removeChild(a); URL.revokeObjectURL(url);
+  saveTextFile(`Report_${compName.replace(/\s+/g, '_')}_${today()}.xls`, '\uFEFF' + xml, 'application/vnd.ms-excel;charset=utf-8')
+    .catch(e => console.warn('Excel export failed:', e));
 }
 
 function exportCSV(data) {
@@ -1459,13 +1458,8 @@ function exportCSV(data) {
     ...data.expenses.map(e => ['Expense', e.date, e.type, '-', e.amount].map(escapeCsv))
   ];
   const csvContent = "\uFEFF" + rows.map(e => e.join(",")).join("\n");
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `${data?.companyInfo?.name || 'company'}_data_${today()}.csv`;
-  document.body.appendChild(a); a.click();
-  document.body.removeChild(a);
+  saveTextFile(`${data?.companyInfo?.name || 'company'}_data_${today()}.csv`, csvContent, 'text/csv;charset=utf-8;')
+    .catch(e => console.warn('CSV export failed:', e));
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -2524,15 +2518,11 @@ const WorkersPage = memo(function WorkersPage({ data, setData, isAdmin, perms, u
     let s = `<?xml version="1.0" encoding="UTF-8"?><?mso-application progid="Excel.Sheet"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"><Worksheet ss:Name="Production Log"><Table>`;
     s += `<Row><Cell><Data ss:Type="String">Date</Data></Cell><Cell><Data ss:Type="String">Item</Data></Cell><Cell><Data ss:Type="String">Quantity</Data></Cell><Cell><Data ss:Type="String">Unit</Data></Cell><Cell><Data ss:Type="String">Unit Price</Data></Cell><Cell><Data ss:Type="String">Total</Data></Cell></Row>`;
     filteredRecords.forEach(r => {
-      s += `<Row><Cell><Data ss:Type="String">${r.date}</Data></Cell><Cell><Data ss:Type="String">${esc(r.category)}</Data></Cell><Cell><Data ss:Type="Number">${r.quantity}</Data></Cell><Cell><Data ss:Type="String">${esc(r.unit)}</Data></Cell><Cell><Data ss:Type="Number">${r.unitPrice}</Data></Cell><Cell><Data ss:Type="Number">${r.total}</Data></Cell></Row>`;
+      s += `<Row><Cell><Data ss:Type="String">${r.date}</Data></Cell><Cell><Data ss:Type="String">${esc(r.category)}</Data></Cell><Cell><Data ss:Type="Number">${Number(r.quantity)||0}</Data></Cell><Cell><Data ss:Type="String">${esc(r.unit)}</Data></Cell><Cell><Data ss:Type="Number">${Number(r.unitPrice)||0}</Data></Cell><Cell><Data ss:Type="Number">${Number(r.total)||0}</Data></Cell></Row>`;
     });
     s += `</Table></Worksheet></Workbook>`;
-    const blob = new Blob(['\uFEFF' + s], { type: 'application/vnd.ms-excel;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = `Production_${worker.name.replace(/\s+/g, '_')}_${today()}.xls`;
-    document.body.appendChild(a); a.click();
-    document.body.removeChild(a); URL.revokeObjectURL(url);
+    saveTextFile(`Production_${worker.name.replace(/\s+/g, '_')}_${today()}.xls`, '\uFEFF' + s, 'application/vnd.ms-excel;charset=utf-8')
+      .catch(err => console.warn('Excel export failed:', err));
   };
 
   useEffect(() => {
@@ -4368,12 +4358,8 @@ const SettingsPage = memo(function SettingsPage({ data, setData, user }) {
   };
 
   const downloadBackup = () => {
-    const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = `nile_backup_${today()}.json`;
-    document.body.appendChild(a); a.click();
-    document.body.removeChild(a);
+    saveTextFile(`nile_backup_${today()}.json`, JSON.stringify(data), 'application/json')
+      .catch(err => console.warn('Backup export failed:', err));
   };
 
   const handleRestore = async (e) => {
@@ -4824,14 +4810,36 @@ function Calculator() {
 ═══════════════════════════════════════════════════════ */
 const saveLocalCreds = async (email, password) => {
   const creds = JSON.parse(localStorage.getItem('nile_local_creds') || '{}');
-  creds[email] = await hashPassword(password); 
+  creds[String(email).trim().toLowerCase()] = await hashPassword(password);
   localStorage.setItem('nile_local_creds', JSON.stringify(creds));
 };
 
 const verifyLocalCreds = async (email, password) => {
   const creds = JSON.parse(localStorage.getItem('nile_local_creds') || '{}');
+  const key = String(email).trim().toLowerCase();
+  // Older versions stored the email with its original letter case.
+  const legacyKey = Object.keys(creds).find(k => k.toLowerCase() === key);
+  const stored = creds[key] ?? (legacyKey ? creds[legacyKey] : undefined);
+  if (!stored) return false;
   const hash = await hashPassword(password);
-  return creds[email] === hash || creds[email] === btoa(password);
+  let legacyB64 = null;
+  try { legacyB64 = btoa(password); } catch { /* non-latin password */ }
+  return stored === hash || (legacyB64 !== null && stored === legacyB64);
+};
+
+/* Local (offline) sign-ins must land on the same workspace the cloud path
+   resolves for that account, or the same user sees different data depending
+   on how they happened to sign in. */
+const localLoginUser = (email, name = 'Local User') => {
+  const e = String(email).trim().toLowerCase();
+  const isSuper = e === 'negm@nile.com' || e === 'aboalaa@nile.com';
+  return {
+    email,
+    name,
+    uid: 'local_' + Date.now(),
+    isLocal: true,
+    ...(isSuper ? { tenantId: 'nile_erp_main', isSuperAdmin: true } : {}),
+  };
 };
 
 function LoginPage({ onLogin, checkActive }) {
@@ -4845,6 +4853,23 @@ function LoginPage({ onLogin, checkActive }) {
   const [resetDone, setResetDone] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [showP, setShowP] = useState(false);
+
+  /* Complete a Google/Apple redirect sign-in when the app comes back.
+     Without this the redirect flow ends silently: successes are only picked
+     up by the auth listener and errors are never shown at all. */
+  useEffect(() => {
+    if (!firebaseEnabled) return;
+    getRedirectResult(auth).then(result => {
+      if (result && result.user) {
+        toast.success(`Welcome back, ${result.user.displayName?.split(' ')[0] || ''} 👋`);
+      }
+    }).catch(error => {
+      if (error.code !== 'auth/popup-closed-by-user' && error.code !== 'auth/cancelled-popup-request') {
+        setErr(`❌ Sign-in failed: ${error.message || error.code}`);
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleLogin = async () => {
     if (!email||!p){setErr('Please enter email and password');return;}
@@ -4882,7 +4907,7 @@ function LoginPage({ onLogin, checkActive }) {
               return;
             }
             toast.success('Signed in locally 👋');
-            onLogin({ email, name: 'Local User', uid: 'local_' + Date.now(), isLocal: true });
+            onLogin(localLoginUser(email));
             setLoading(false);
             return;
           }
@@ -4910,16 +4935,27 @@ function LoginPage({ onLogin, checkActive }) {
       }
     } catch (error) {
       console.error(error);
-      const isOfflineError = !navigator.onLine || error.message.includes('fetch') || error.message.includes('Failed to fetch');
-      if (isOfflineError && await verifyLocalCreds(email, p)) {
+      // Whatever the cloud said (account missing there, network down, project
+      // misconfigured…), accounts registered on THIS device must still work —
+      // always try the local vault as the last resort.
+      if (await verifyLocalCreds(email, p)) {
         const isActive = checkActive(email);
         if (!isActive) { setErr('⛔ This account is disabled'); setLoading(false); return; }
-        onLogin({ email, name: 'Local User', uid: 'local_'+Date.now(), isLocal: true });
+        toast.success('Signed in locally 👋');
+        onLogin(localLoginUser(email));
       } else {
+        const isOfflineError = !navigator.onLine || error.code === 'auth/network-request-failed'
+          || (error.message || '').includes('fetch');
+        const codeTag = error.code ? ` (${error.code})` : '';
         if (error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
            setErr('❌ Incorrect email or password');
+        } else if (isOfflineError) {
+           setErr('📵 Could not reach the sign-in server. Check your connection — or create an account to work offline.' + codeTag);
+        } else if (error.code === 'auth/operation-not-allowed' || error.code === 'auth/invalid-api-key' || String(error.code || '').startsWith('auth/api-key')) {
+           setErr('⚠️ Cloud sign-in is not configured. Create a new account to work locally, or connect Firebase/MongoDB from Power Tools.' + codeTag);
         } else {
-           setErr(error.message && !isOfflineError ? error.message : '❌ Incorrect email or password');
+           // Firebase messages already embed their (auth/…) code
+           setErr(error.message ? error.message : '❌ Sign-in failed' + codeTag);
         }
       }
     }
@@ -4966,10 +5002,24 @@ function LoginPage({ onLogin, checkActive }) {
       toast.success(`Welcome ${name}! Your account was created successfully 🎉`);
     } catch (e) {
       console.error(e);
-      if(e.code==='auth/email-already-in-use' || (e.message && e.message.toLowerCase().includes('already exists'))) {
+      if (e.code === 'auth/email-already-in-use' || (e.message && e.message.toLowerCase().includes('already exists'))) {
         setErr('⚠️ This email is already registered. Try signing in instead.');
+      } else if (e.code === 'auth/weak-password') {
+        setErr('❌ Password is too weak — use at least 6 characters');
+      } else if (e.code === 'auth/invalid-email') {
+        setErr('❌ Invalid email address');
+      } else {
+        // Cloud signup unavailable (offline / misconfigured project) — create
+        // the account locally so the user can start working right away.
+        try {
+          await saveLocalCreds(email, p);
+          toast.success(`Welcome ${name}! Account created on this device 🎉`);
+          if (onLogin) onLogin(localLoginUser(email, name));
+          return;
+        } catch {
+          setErr(e.message && !e.message.includes('fetch') ? `❌ ${e.message}` : '❌ Error creating account');
+        }
       }
-      else setErr(e.message && !e.message.includes('fetch') ? `❌ ${e.message}` : '❌ Error creating account');
       setLoading(false);
     }
   };
@@ -4983,6 +5033,12 @@ function LoginPage({ onLogin, checkActive }) {
           }
           await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence);
           const provider = new GoogleAuthProvider();
+          if (Capacitor.isNativePlatform()) {
+            // Popups don't exist inside the Android WebView — use the full
+            // redirect flow; getRedirectResult() completes it when we return.
+            await signInWithRedirect(auth, provider);
+            return;
+          }
           const result = await signInWithPopup(auth, provider);
           const user = result.user;
           
@@ -5036,6 +5092,10 @@ function LoginPage({ onLogin, checkActive }) {
         try {
           await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence);
           const provider = new OAuthProvider('apple.com');
+          if (Capacitor.isNativePlatform()) {
+            await signInWithRedirect(auth, provider);
+            return;
+          }
           const result = await signInWithPopup(auth, provider);
           const user = result.user;
           
@@ -6226,6 +6286,8 @@ function AppInner() {
   useEffect(() => { currentDataRef.current = data; }, [data]);
 
   const lastSource                = useRef(null);
+  const dataLoadedRef             = useRef(false);
+  const startSubscriptionRef      = useRef(() => {});
   const [fbData, setFbData] = useState(null);
   const [showNotif, setShowNotif] = useState(false);
   const [saving, setSaving]       = useState(false);
@@ -6290,6 +6352,7 @@ function AppInner() {
              }
           }
           if (cachedData) {
+              dataLoadedRef.current = true;
               startTransition(() => {
                 dispatch({ type: 'REPLACE', payload: cachedData, noMerge: true });
                 setDataLoaded(true);
@@ -6301,17 +6364,40 @@ function AppInner() {
 
     let unsubDb = () => {};
     let isSubscribed = false;
+    let subscribedDocId = null;
 
     (async () => {
-      // Start the subscription only after confirming a user exists
+      // Start (or re-target) the data subscription. The workspace doc id is
+      // resolved from the tenant, which may only become known AFTER an early
+      // subscription already attached (e.g. login → subscribe → tenant
+      // resolution) — in that case we must re-subscribe to the right doc or
+      // the app stays pinned to an empty workspace and shows no data.
       const startSubscription = () => {
-        if (isSubscribed) return;
+        const docId = (typeof db._docId === 'function') ? db._docId() : null;
+        if (isSubscribed) {
+          if (subscribedDocId === docId) return;
+          try { unsubDb(); } catch (e) { /* ignore */ }
+          isSubscribed = false;
+        }
+        subscribedDocId = docId;
         let cancelled = false;
         unsubDb = db.subscribe(async (newData) => {
-              // Fixed: allow empty data through to init a new account; ignore only connection errors
+              // Connection errors: show offline, but never leave the user stuck
+              // on the skeleton — fall back to the local copy (or a fresh
+              // workspace) if nothing has been loaded yet.
               if (newData && (newData._isConnectionError || newData._connectionError)) {
                 setSysStatus('offline');
-                return; 
+                if (!dataLoadedRef.current) {
+                  let cached = null;
+                  try { cached = await idbGet('nile_data_cache'); } catch(e) {}
+                  dataLoadedRef.current = true;
+                  lastSource.current = 'local';
+                  startTransition(() => {
+                    dispatch({ type: 'REPLACE', payload: cached || EMPTY_DATA });
+                    setDataLoaded(true);
+                  });
+                }
+                return;
               }
 
               let localLastMod = 0;
@@ -6360,6 +6446,7 @@ function AppInner() {
                    try { await idbDel('nile_data_cache'); } catch(e) {}
                 }
               }
+          dataLoadedRef.current = true;
           startTransition(() => {
             setSysStatus('online');
             setDataLoaded(true);
@@ -6371,20 +6458,24 @@ function AppInner() {
         unsubDb = () => { cancelled = true; };
         isSubscribed = true;
       };
+      // Expose it so a local login can kick off the data feed (on a fresh
+      // device nothing else ever starts it, leaving the skeleton forever).
+      startSubscriptionRef.current = startSubscription;
       
       // Listen for auth state changes
       const unsubAuth = onAuthStateChanged(auth, async (firebaseUser) => {
         if (firebaseUser) {
-          // Check whether the user was deleted (banned) by the admin
-          // Use lastSource.current to ensure data is loaded, or use fbData
+          // Check whether the user was deleted (banned) by the admin.
+          // Owners/super-admins are exempt — otherwise deleting your own
+          // duplicate entry locks the owner out of every device forever.
           const currentEmailSafe = String(firebaseUser.email || '').toLowerCase();
-          if (currentDataRef.current && currentDataRef.current.bannedEmails && currentDataRef.current.bannedEmails.some(e => String(e).toLowerCase() === currentEmailSafe)) {
+          const isSuperAdmin = currentEmailSafe === 'negm@nile.com' || currentEmailSafe === 'aboalaa@nile.com';
+          const knownOwner = isSuperAdmin || localStorage.getItem('nile_is_owner') === 'true';
+          if (!knownOwner && currentDataRef.current && currentDataRef.current.bannedEmails && currentDataRef.current.bannedEmails.some(e => String(e).toLowerCase() === currentEmailSafe)) {
              await signOut(auth);
              toast.error('⛔ This account was deleted by the admin.');
              return;
           }
-
-          const isSuperAdmin = currentEmailSafe === 'negm@nile.com' || currentEmailSafe === 'aboalaa@nile.com';
           
           // [SaaS] Resolve the company's tenant workspace using the central database
           let resolvedTenantId = 'nile_erp_main';
@@ -6433,8 +6524,10 @@ function AppInner() {
         } else {
         const sessionUser = db.loadSession();
         if (sessionUser && sessionUser.isLocal) {
-          setTenantId(sessionUser.tenantId);
-          localStorage.setItem('nile_tenant_id', sessionUser.tenantId);
+          if (sessionUser.tenantId) {
+            setTenantId(sessionUser.tenantId);
+            localStorage.setItem('nile_tenant_id', sessionUser.tenantId);
+          }
           startSubscription(); // sync data for the local user when offline
         }
         setUser(sessionUser?.isLocal ? sessionUser : null);
@@ -6719,9 +6812,17 @@ function AppInner() {
     if (localUser) {
       setUser(localUser);
       db.saveSession(localUser);
+      if (localUser.tenantId) {
+        setTenantId(localUser.tenantId);
+        localStorage.setItem('nile_tenant_id', localUser.tenantId);
+      }
+      // Fresh device: the boot-time auth listener saw no session, so the data
+      // feed was never started — start it now or dataLoaded never turns true.
+      // Firebase sign-ins skip this: their tenant isn't resolved yet, and the
+      // auth listener starts (or re-targets) the feed right after it is.
+      if (localUser.isLocal) startSubscriptionRef.current();
     }
-    // For local sign-in, data is already loaded from cache via db.subscribe
-  }; 
+  };
 
   const handleLogout = useCallback(async () => {
     await signOut(auth);
@@ -7047,7 +7148,7 @@ function AppInner() {
         </div>
         <main className={"main" + (collapsed ? ' collapsed' : '')}>
           <div className="topbar">
-            <div style={{display:'flex',alignItems:'center',gap:12}}>
+            <div className="topbar-left" style={{display:'flex',alignItems:'center',gap:12,minWidth:0}}>
               {isElectron && (
                 <div className="win-controls" style={{display:'flex',gap:6,marginInlineStart:10}}>
                   <button className="btn btn-icon btn-sm" style={{background:'var(--rose)',color:'#fff',width:26,height:26,padding:0}} onClick={()=>winCtrl('app-close')}>✕</button>
@@ -7068,17 +7169,17 @@ function AppInner() {
                 {lang === 'ar' ? 'EN' : 'AR'}
               </button>
               <button className="tb-btn" style={{background:'linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%)', border:'1px solid rgba(139, 92, 246, 0.5)', boxShadow:'0 0 15px rgba(139, 92, 246, 0.4)', color:'#e2e8f0', padding:'8px 16px', letterSpacing:'0.5px', gap: '8px'}} onClick={() => setShowAI(!showAI)} title="SMART COPILOT">
-                <span style={{fontSize: '16px'}}>✨</span> <strong style={{background: 'linear-gradient(to right, #a78bfa, #22d3ee)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontFamily: 'system-ui, sans-serif', letterSpacing: '1px'}}>SMART</strong> <span style={{fontFamily: 'system-ui, sans-serif', fontWeight: 600, fontSize: '13px', color: '#cbd5e1'}}>COPILOT</span>
+                <span style={{fontSize: '16px'}}>✨</span> <strong className="tb-label" style={{background: 'linear-gradient(to right, #a78bfa, #22d3ee)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontFamily: 'system-ui, sans-serif', letterSpacing: '1px'}}>SMART</strong> <span className="tb-label" style={{fontFamily: 'system-ui, sans-serif', fontWeight: 600, fontSize: '13px', color: '#cbd5e1'}}>COPILOT</span>
               </button>
               <div className="notif-wrap" ref={notifRef}>
                 <button className="tb-btn" onClick={() => setShowNotif(v => !v)}>
-                🔔 <span><DynText>{t('notifications')}</DynText></span>
+                🔔 <span className="tb-label"><DynText>{t('notifications')}</DynText></span>
                   {alertCount > 0 && <span className="notif-dot" />}
                 </button>
                 {showNotif && <NotifPanel data={data} onClose={() => setShowNotif(false)} />}
               </div>
               <button className="tb-btn primary" onClick={() => { exportExcel(data); toast.info('Exporting file...'); }}>
-                📊 <span><DynText>{t('exportExcel')}</DynText></span>
+                📊 <span className="tb-label"><DynText>{t('exportExcel')}</DynText></span>
               </button>
             </div>
           </div>

@@ -37,3 +37,15 @@ Requires [Android Studio](https://developer.android.com/studio) + JDK installed.
 
 ---
 Tip: `npm run android:sync` after every web change keeps the native app up to date.
+
+## Connecting the installed app to your backend
+An installed APK/PWA can't read build-time `.env` values, so both cloud
+backends are configured **at runtime** from inside the app (press `Alt+K` on
+desktop, or use the command palette):
+
+- **🔥 Connect Firebase** — paste your Firebase config object.
+- **🗄 Connect MongoDB server** — enter your server's API URL
+  (e.g. `https://my-server.com/api`). Leave empty to disconnect.
+
+Exports (Excel/CSV/JSON backup) on Android open the system **share sheet**
+so you can save to Downloads or send the file anywhere.
