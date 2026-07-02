@@ -7,7 +7,7 @@ import { LanguageProvider, useLanguage, DynText } from "./context/LanguageContex
 import { useAppStore, EMPTY_DATA } from './lib/store.js';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, BarChart, Bar, Legend, PieChart, Pie, Cell, CartesianGrid } from 'recharts';
 import { api } from './lib/api.js'; // API client (MongoDB backend, optional)
-import { Capacitor, PushNotifications } from './lib/native.js'; // web-safe native shims
+import { Capacitor, PushNotifications, saveTextFile } from './lib/native.js'; // web-safe native shims
 
 /* ═══════════════════════════════════════════════════════
    GLOBAL STYLES
@@ -1302,8 +1302,8 @@ function exportExcel(data) {
   
   const compName = data.companyInfo?.name || 'Company';
   
-  const totalExpensesM = incM.reduce((s,r) => s + r.totalExpenses, 0) + data.expenses.reduce((s,e) => s + (inMonth(e.date) ? e.amount : 0), 0);
-  const totalSalesM = salesM.reduce((s,r) => s + r.totalAmount, 0);
+  const totalExpensesM = incM.reduce((s,r) => s + (r.totalExpenses || 0), 0) + data.expenses.reduce((s,e) => s + (inMonth(e.date) ? (e.amount || 0) : 0), 0);
+  const totalSalesM = salesM.reduce((s,r) => s + (r.totalAmount || 0), 0);
 
   const STYLES = `<Styles>
 <Style ss:ID="def"><Alignment ss:Horizontal="Right" ss:Vertical="Center"/><Font ss:FontName="Arial" ss:Size="11"/></Style>
@@ -1322,6 +1322,9 @@ function exportExcel(data) {
 </Styles>`;
 
   const C = (v, sid) => {
+    // A NaN/Infinity inside <Data ss:Type="Number"> makes Excel reject the
+    // whole file, so coerce any non-finite number (missing fields) to 0.
+    if (typeof v === 'number' && !Number.isFinite(v)) v = 0;
     const t = typeof v === 'number' ? 'Number' : 'String';
     return `<Cell ss:StyleID="${sid}"><Data ss:Type="${t}">${esc(v ?? '')}</Data></Cell>`;
   };
@@ -1373,11 +1376,11 @@ function exportExcel(data) {
     return s;
   };
 
-  const tSales = data.sales.reduce((s,r)=>s+r.totalAmount,0);
-  const tPaid  = data.sales.reduce((s,r)=>s+r.paid,0);
-  const tRem   = data.sales.reduce((s,r)=>s+r.remaining,0);
-  const tInc   = data.incoming.reduce((s,r)=>s+r.totalExpenses,0);
-  const tWork  = data.workers.reduce((s,w)=>s+w.totalEarned,0);
+  const tSales = data.sales.reduce((s,r)=>s+(r.totalAmount||0),0);
+  const tPaid  = data.sales.reduce((s,r)=>s+(r.paid||0),0);
+  const tRem   = data.sales.reduce((s,r)=>s+(r.remaining||0),0);
+  const tInc   = data.incoming.reduce((s,r)=>s+(r.totalExpenses||0),0);
+  const tWork  = data.workers.reduce((s,w)=>s+(w.totalEarned||0),0);
 
   const buildSheet = (name, title, hdrs, rows, tots) => {
     const nc = hdrs.length;
@@ -1435,12 +1438,8 @@ function exportExcel(data) {
     `</Workbook>`
   ].join('\n');
 
-  const blob = new Blob(['\uFEFF' + xml], { type: 'application/vnd.ms-excel;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = `Report_${compName.replace(/\s+/g, '_')}_${today()}.xls`;
-  document.body.appendChild(a); a.click();
-  document.body.removeChild(a); URL.revokeObjectURL(url);
+  saveTextFile(`Report_${compName.replace(/\s+/g, '_')}_${today()}.xls`, '\uFEFF' + xml, 'application/vnd.ms-excel;charset=utf-8')
+    .catch(e => console.warn('Excel export failed:', e));
 }
 
 function exportCSV(data) {
@@ -1459,13 +1458,8 @@ function exportCSV(data) {
     ...data.expenses.map(e => ['Expense', e.date, e.type, '-', e.amount].map(escapeCsv))
   ];
   const csvContent = "\uFEFF" + rows.map(e => e.join(",")).join("\n");
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `${data?.companyInfo?.name || 'company'}_data_${today()}.csv`;
-  document.body.appendChild(a); a.click();
-  document.body.removeChild(a);
+  saveTextFile(`${data?.companyInfo?.name || 'company'}_data_${today()}.csv`, csvContent, 'text/csv;charset=utf-8;')
+    .catch(e => console.warn('CSV export failed:', e));
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -2524,15 +2518,11 @@ const WorkersPage = memo(function WorkersPage({ data, setData, isAdmin, perms, u
     let s = `<?xml version="1.0" encoding="UTF-8"?><?mso-application progid="Excel.Sheet"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"><Worksheet ss:Name="Production Log"><Table>`;
     s += `<Row><Cell><Data ss:Type="String">Date</Data></Cell><Cell><Data ss:Type="String">Item</Data></Cell><Cell><Data ss:Type="String">Quantity</Data></Cell><Cell><Data ss:Type="String">Unit</Data></Cell><Cell><Data ss:Type="String">Unit Price</Data></Cell><Cell><Data ss:Type="String">Total</Data></Cell></Row>`;
     filteredRecords.forEach(r => {
-      s += `<Row><Cell><Data ss:Type="String">${r.date}</Data></Cell><Cell><Data ss:Type="String">${esc(r.category)}</Data></Cell><Cell><Data ss:Type="Number">${r.quantity}</Data></Cell><Cell><Data ss:Type="String">${esc(r.unit)}</Data></Cell><Cell><Data ss:Type="Number">${r.unitPrice}</Data></Cell><Cell><Data ss:Type="Number">${r.total}</Data></Cell></Row>`;
+      s += `<Row><Cell><Data ss:Type="String">${r.date}</Data></Cell><Cell><Data ss:Type="String">${esc(r.category)}</Data></Cell><Cell><Data ss:Type="Number">${Number(r.quantity)||0}</Data></Cell><Cell><Data ss:Type="String">${esc(r.unit)}</Data></Cell><Cell><Data ss:Type="Number">${Number(r.unitPrice)||0}</Data></Cell><Cell><Data ss:Type="Number">${Number(r.total)||0}</Data></Cell></Row>`;
     });
     s += `</Table></Worksheet></Workbook>`;
-    const blob = new Blob(['\uFEFF' + s], { type: 'application/vnd.ms-excel;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = `Production_${worker.name.replace(/\s+/g, '_')}_${today()}.xls`;
-    document.body.appendChild(a); a.click();
-    document.body.removeChild(a); URL.revokeObjectURL(url);
+    saveTextFile(`Production_${worker.name.replace(/\s+/g, '_')}_${today()}.xls`, '\uFEFF' + s, 'application/vnd.ms-excel;charset=utf-8')
+      .catch(err => console.warn('Excel export failed:', err));
   };
 
   useEffect(() => {
@@ -4368,12 +4358,8 @@ const SettingsPage = memo(function SettingsPage({ data, setData, user }) {
   };
 
   const downloadBackup = () => {
-    const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = `nile_backup_${today()}.json`;
-    document.body.appendChild(a); a.click();
-    document.body.removeChild(a);
+    saveTextFile(`nile_backup_${today()}.json`, JSON.stringify(data), 'application/json')
+      .catch(err => console.warn('Backup export failed:', err));
   };
 
   const handleRestore = async (e) => {

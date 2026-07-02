@@ -8,7 +8,12 @@
  *
  * The signed-in JWT (stored as `nile_token`) is attached automatically.
  */
-const BASE = (import.meta.env && import.meta.env.VITE_API_URL) || "";
+// Runtime override first (set via the in-app "Connect MongoDB Server" tool —
+// the only way an installed APK/PWA can point at a server), then build-time env.
+function runtimeUrl() {
+  try { return localStorage.getItem("nile_api_url") || ""; } catch { return ""; }
+}
+const BASE = (runtimeUrl() || (import.meta.env && import.meta.env.VITE_API_URL) || "").replace(/\/+$/, "");
 
 export const apiEnabled = Boolean(BASE);
 

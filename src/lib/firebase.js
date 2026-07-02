@@ -16,7 +16,7 @@
  */
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
+import { initializeFirestore } from "firebase/firestore";
 import { idbSet, idbGet } from "./idb.js";
 import { api, apiEnabled } from "./api.js";
 
@@ -80,7 +80,10 @@ if (firebaseEnabled) {
   try {
     app = initializeApp(firebaseConfig);
     firebaseAuth = getAuth(app);
-    firestore = getFirestore(app);
+    // ignoreUndefinedProperties: the dataset routinely carries undefined
+    // fields (optional form inputs); without this every setDoc() throws and
+    // nothing ever reaches Firestore.
+    firestore = initializeFirestore(app, { ignoreUndefinedProperties: true });
   } catch (e) {
     console.warn("Firebase init failed, falling back to local storage:", e);
   }
@@ -175,30 +178,36 @@ export const db = {
       || "local";
   },
 
-  // Persist the whole dataset. App.jsx expects `true` on success.
+  // Persist the whole dataset. App.jsx expects `true` on success, `false` on a
+  // cloud failure (data stays safe locally) and `'RACE_CONDITION'` when the
+  // server holds a newer copy.
   async save(data) {
     // Always keep a local copy for offline resilience.
-    try { localStorage.setItem("nile_data_cache", JSON.stringify(data)); } catch { /* quota */ }
     try { await idbSet("nile_data_cache", data); } catch { /* ignore */ }
     if (mongoActive()) {
       try {
         const tenantId = localStorage.getItem("nile_impersonated_tenant") || undefined;
         const ep = tenantId ? `/data?tenantId=${encodeURIComponent(tenantId)}` : "/data";
-        await api.put(ep, { data });
+        const res = await api.put(ep, { data });
+        if (res && res.stale) return "RACE_CONDITION"; // server copy is newer
         return true;
       } catch (e) {
         console.warn("MongoDB save failed (kept local copy):", e.message);
-        return true;
+        return false;
       }
     }
     if (firebaseEnabled && firestore) {
       try {
         const fs = await import("firebase/firestore");
-        await fs.setDoc(fs.doc(firestore, "appData", this._docId()), data, { merge: true });
+        // Full replace (no merge): deletions — removed rows, cleared
+        // attendance days, dropped keys — must reach the other devices too.
+        await fs.setDoc(fs.doc(firestore, "appData", this._docId()), data);
         return true;
       } catch (e) {
         console.warn("Firestore save failed (kept local copy):", e);
-        return true;
+        // A locally signed-in user (no Firebase auth) can't pass the security
+        // rules; for them local persistence IS the expected success path.
+        return firebaseAuth && firebaseAuth.currentUser ? false : true;
       }
     }
     return true;
