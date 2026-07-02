@@ -4827,6 +4827,21 @@ const verifyLocalCreds = async (email, password) => {
   return stored === hash || (legacyB64 !== null && stored === legacyB64);
 };
 
+/* Local (offline) sign-ins must land on the same workspace the cloud path
+   resolves for that account, or the same user sees different data depending
+   on how they happened to sign in. */
+const localLoginUser = (email, name = 'Local User') => {
+  const e = String(email).trim().toLowerCase();
+  const isSuper = e === 'negm@nile.com' || e === 'aboalaa@nile.com';
+  return {
+    email,
+    name,
+    uid: 'local_' + Date.now(),
+    isLocal: true,
+    ...(isSuper ? { tenantId: 'nile_erp_main', isSuperAdmin: true } : {}),
+  };
+};
+
 function LoginPage({ onLogin, checkActive }) {
   const toast = useToast();
   const [name,setName]=useState('');
@@ -4892,7 +4907,7 @@ function LoginPage({ onLogin, checkActive }) {
               return;
             }
             toast.success('Signed in locally 👋');
-            onLogin({ email, name: 'Local User', uid: 'local_' + Date.now(), isLocal: true });
+            onLogin(localLoginUser(email));
             setLoading(false);
             return;
           }
@@ -4927,7 +4942,7 @@ function LoginPage({ onLogin, checkActive }) {
         const isActive = checkActive(email);
         if (!isActive) { setErr('⛔ This account is disabled'); setLoading(false); return; }
         toast.success('Signed in locally 👋');
-        onLogin({ email, name: 'Local User', uid: 'local_'+Date.now(), isLocal: true });
+        onLogin(localLoginUser(email));
       } else {
         const isOfflineError = !navigator.onLine || error.code === 'auth/network-request-failed'
           || (error.message || '').includes('fetch');
@@ -4999,7 +5014,7 @@ function LoginPage({ onLogin, checkActive }) {
         try {
           await saveLocalCreds(email, p);
           toast.success(`Welcome ${name}! Account created on this device 🎉`);
-          if (onLogin) onLogin({ email, name, uid: 'local_' + Date.now(), isLocal: true });
+          if (onLogin) onLogin(localLoginUser(email, name));
           return;
         } catch {
           setErr(e.message && !e.message.includes('fetch') ? `❌ ${e.message}` : '❌ Error creating account');
@@ -6349,11 +6364,22 @@ function AppInner() {
 
     let unsubDb = () => {};
     let isSubscribed = false;
+    let subscribedDocId = null;
 
     (async () => {
-      // Start the subscription only after confirming a user exists
+      // Start (or re-target) the data subscription. The workspace doc id is
+      // resolved from the tenant, which may only become known AFTER an early
+      // subscription already attached (e.g. login → subscribe → tenant
+      // resolution) — in that case we must re-subscribe to the right doc or
+      // the app stays pinned to an empty workspace and shows no data.
       const startSubscription = () => {
-        if (isSubscribed) return;
+        const docId = (typeof db._docId === 'function') ? db._docId() : null;
+        if (isSubscribed) {
+          if (subscribedDocId === docId) return;
+          try { unsubDb(); } catch (e) { /* ignore */ }
+          isSubscribed = false;
+        }
+        subscribedDocId = docId;
         let cancelled = false;
         unsubDb = db.subscribe(async (newData) => {
               // Connection errors: show offline, but never leave the user stuck
@@ -6792,7 +6818,9 @@ function AppInner() {
       }
       // Fresh device: the boot-time auth listener saw no session, so the data
       // feed was never started — start it now or dataLoaded never turns true.
-      startSubscriptionRef.current();
+      // Firebase sign-ins skip this: their tenant isn't resolved yet, and the
+      // auth listener starts (or re-targets) the feed right after it is.
+      if (localUser.isLocal) startSubscriptionRef.current();
     }
   };
 
